@@ -45,11 +45,12 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 import ru.gd_alt.youwilldrive.R
 import ru.gd_alt.youwilldrive.ui.theme.YouWillDriveTheme
 
 @Composable
-fun LoginScreen() {
+fun LoginScreen(navController: NavController? = null) {
     var phoneNumber by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
