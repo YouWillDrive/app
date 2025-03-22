@@ -13,10 +13,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import ru.gd_alt.youwilldrive.ui.screens.Login.LoginScreenPreview
 import ru.gd_alt.youwilldrive.ui.theme.YouWillDriveTheme
+import ru.gd_alt.youwilldrive.models.SupabaseClient
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val client = SupabaseClient.client
         enableEdgeToEdge()
         setContent {
             YouWillDriveTheme {
