@@ -1,16 +1,17 @@
 package ru.gd_alt.youwilldrive.ui.components
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -21,21 +22,18 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import ru.gd_alt.youwilldrive.models.Event
 import ru.gd_alt.youwilldrive.models.EventType
 import java.time.YearMonth
 import kotlin.random.Random
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.runtime.remember
-import androidx.compose.ui.tooling.preview.Preview
 
 @Composable
 @Preview
 fun Calendar(
     modifier: Modifier = Modifier,
-    month: Int = 12,
+    month: Int = 10,
     year: Int = 2024,
     events: List<Event> = emptyList(),
     onDayClick: (Int) -> Unit = {}  // New parameter for day click callback
@@ -43,7 +41,6 @@ fun Calendar(
     val yearMonth = YearMonth.of(year, month)
     val daysInMonth = yearMonth.lengthOfMonth()
     val firstDayOfMonth = yearMonth.atDay(1).dayOfWeek.value % 7
-    val eventsByDay = events.groupBy { it.id % daysInMonth + 1 } // Temporary mapping for example
 
     // Map of event types to consistent colors
     val eventTypeColors = events
@@ -57,15 +54,14 @@ fun Calendar(
             )
         }
 
-    Column(modifier = modifier.fillMaxWidth()) {
+    Column(modifier = modifier.fillMaxWidth().background(Color.White)) {
         // Calendar header with weekday names
         CalendarHeader()
 
         // Calendar days grid
         var dayCounter = 1
-        val totalSlots = (daysInMonth + firstDayOfMonth + 6) / 7 * 7
 
-        for (row in 0 until (totalSlots / 7)) {
+        for (row in 0 until (31 / 7) + 1) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
@@ -83,13 +79,13 @@ fun Calendar(
                     } else {
                         // Day cell
                         val currentDay = dayCounter
-                        val dayEvents = eventsByDay[currentDay] ?: emptyList()
+                        val dayEvents: List<Event> = emptyList() // TODO: Select events to display
 
                         CalendarDay(
+                            modifier = Modifier,
                             day = currentDay,
                             events = dayEvents,
                             eventTypeColors = eventTypeColors,
-                            onClick = { onDayClick(currentDay) }  // Pass click handler
                         )
 
                         dayCounter++
@@ -101,26 +97,20 @@ fun Calendar(
 }
 
 @Composable
-private fun CalendarDay(
+private fun RowScope.CalendarDay(
     modifier: Modifier = Modifier,
     day: Int,
     events: List<Event>,
-    eventTypeColors: Map<EventType, Color>,
-    onClick: () -> Unit = {},  // New parameter for click handling
+    eventTypeColors: Map<EventType, Color>
 ) {
     Box(
         modifier = modifier
+            .weight(1f)
             .aspectRatio(1f)
             .padding(2.dp)
             .border(
                 width = 0.5.dp,
                 color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
-            )
-            // Add clickable modifier to handle touches
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick
             ),
         contentAlignment = Alignment.Center
     ) {
@@ -147,16 +137,6 @@ private fun CalendarDay(
                             .size(8.dp)
                             .clip(CircleShape)
                             .background(eventTypeColors[event.type] ?: MaterialTheme.colorScheme.primary)
-                    )
-                }
-
-                // Show "+" indicator if there are more than 3 events
-                if (events.size > 3) {
-                    Text(
-                        text = "+",
-                        color = MaterialTheme.colorScheme.primary,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(start = 2.dp)
                     )
                 }
             }
