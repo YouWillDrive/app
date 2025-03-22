@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name" translatable="false">YouWillDrive</string>
+    <string name="login">Войти</string>
+    <string name="phone_number">Номер телефона</string>
+    <string name="password">Пароль</string>
+    <string name="login_btn">Вход</string>
+    <string name="password_hide">Скрыть пароль</string>
+    <string name="password_show">Показать пароль</string>
+</resources>
