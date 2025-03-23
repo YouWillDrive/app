@@ -20,7 +20,7 @@ object Placeholders {
     val DefaultUser3 = User(2, AdminRole, "User", "1234567890", "a", "a", "a", "a", "a")
     val DefaultTransmission = Transmission(0, "Manual")
     val DefaultCar = Car(0, "green", "Toyota", DefaultTransmission)
-    val DefaultCadet = Cadet(0, DefaultUser1, DefaultPlan, 0)
+    val DefaultCadet = Cadet(0, DefaultUser1, 0)
     val DefaultInstructor = Instructor(0, DefaultUser2, DefaultCar)
     val DefaultPlanHistoryPoint = PlanHistoryPoint(0, DefaultPlan, DefaultCadet, 0, 0, DefaultInstructor)
     val DefaultEventType1 = EventType(0, "Lesson")
