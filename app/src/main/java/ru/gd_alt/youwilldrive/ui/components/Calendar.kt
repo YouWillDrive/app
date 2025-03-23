@@ -32,19 +32,22 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import ru.gd_alt.youwilldrive.R
+import ru.gd_alt.youwilldrive.models.Cadet
 import ru.gd_alt.youwilldrive.models.Event
 import ru.gd_alt.youwilldrive.models.EventType
+import ru.gd_alt.youwilldrive.models.Placeholders
+import ru.gd_alt.youwilldrive.models.User
+import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
-import kotlin.random.Random
 
 @Composable
 @Preview
 fun Calendar(
     modifier: Modifier = Modifier,
-    month: Int = 10,
-    year: Int = 2024,
-    events: List<Event> = emptyList(),
+    month: Int = LocalDate.now().monthValue,
+    year: Int = LocalDate.now().year,
+    events: List<Event> = Placeholders.DefaultEventList,
     onDayClick: (Int) -> Unit = {
         day -> val selectedDate = "$day.$month.$year"
         android.util.Log.d("Calendar", "Selected date: $selectedDate")
@@ -54,16 +57,12 @@ fun Calendar(
     val daysInMonth = yearMonth.lengthOfMonth()
     val firstDayOfMonth = yearMonth.atDay(1).dayOfWeek.value % 7 - 1
 
-    val eventTypeColors = events
-        .map { it.type }
-        .distinctBy { it.id }
-        .associateWith {
-            Color(
-                red = Random(it.id).nextFloat() * 0.7f + 0.3f,
-                green = Random(it.id * 2).nextFloat() * 0.7f + 0.3f,
-                blue = Random(it.id * 3).nextFloat() * 0.7f + 0.3f
-            )
-        }
+    val eventTypeColors = mutableMapOf<EventType, Color>(
+        EventType(1, "1") to Color(0xFF39A0ED),
+        EventType(2, "2") to Color(0xFF04724D),
+        EventType(3, "3") to Color(0xFF950952),
+        EventType(4, "4") to Color(0xFFD1D646),
+    )
 
     ElevatedCard(
         modifier = modifier
@@ -116,6 +115,10 @@ fun Calendar(
                                         java.time.Instant.ofEpochSecond(it.date.toLong())
                                             .atZone(ZoneId.systemDefault()).toLocalDateTime()
                                             .dayOfMonth == currentDay
+                                                &&
+                                        java.time.Instant.ofEpochSecond(it.date.toLong())
+                                            .atZone(ZoneId.systemDefault()).toLocalDateTime()
+                                            .monthValue == month
                                     }
 
                                     CalendarDay(
@@ -157,35 +160,30 @@ private fun RowScope.CalendarDay(
             ),
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (events.isNotEmpty())
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
-            else
-                MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = if (events.isNotEmpty()) 2.dp else 0.dp
+            defaultElevation = 2.dp
         )
     ) {
-        Box(
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            contentAlignment = Alignment.Center
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Day number
+            // Day number at the top
             Text(
                 text = day.toString(),
                 color = MaterialTheme.colorScheme.onSurface,
                 style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 4.dp)
+                modifier = Modifier.padding(top = 4.dp)
             )
 
-            // Events indicators
+            // Spacer to push indicators to the bottom
             if (events.isNotEmpty()) {
                 Row(
                     modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 4.dp),
+                        .padding(bottom = 4.dp, top = 4.dp),
                     horizontalArrangement = Arrangement.Center
                 ) {
                     events.take(3).forEach { event ->

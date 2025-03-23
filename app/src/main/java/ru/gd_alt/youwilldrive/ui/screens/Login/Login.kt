@@ -46,11 +46,16 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.gd_alt.youwilldrive.R
+import ru.gd_alt.youwilldrive.models.User
 import ru.gd_alt.youwilldrive.ui.theme.YouWillDriveTheme
 
 @Composable
-fun LoginScreen(navController: NavController? = null) {
+fun LoginScreen(navController: NavController? = null, viewModel: LoginViewModel = viewModel()
+) {
     var phoneNumber by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
@@ -154,7 +159,7 @@ fun LoginScreen(navController: NavController? = null) {
 
                     // Login button
                     Button(
-                        onClick = { /* TODO: Implement login logic */ },
+                        onClick = { viewModel.login(phoneNumber, password) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),
