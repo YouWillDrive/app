@@ -2,6 +2,8 @@ package ru.gd_alt.youwilldrive.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,7 +57,9 @@ fun Calendar(
             )
         }
 
-    Column(modifier = modifier.fillMaxWidth().background(Color.White)) {
+    Column(modifier = modifier
+        .fillMaxWidth()
+        .background(Color.White)) {
         // Calendar header with weekday names
         CalendarHeader()
 
@@ -80,8 +85,7 @@ fun Calendar(
                         // Day cell
                         val currentDay = dayCounter
                         val dayEvents: List<Event> = events.filter {
-                            e ->
-                            java.time.Instant.ofEpochSecond(e.date.toLong())
+                            java.time.Instant.ofEpochSecond(it.date.toLong())
                                 .atZone(ZoneId.systemDefault()).toLocalDateTime()
                                 .dayOfMonth == currentDay }
 
@@ -90,6 +94,7 @@ fun Calendar(
                             day = currentDay,
                             events = dayEvents,
                             eventTypeColors = eventTypeColors,
+                            onDayClick
                         )
 
                         dayCounter++
@@ -105,7 +110,8 @@ private fun RowScope.CalendarDay(
     modifier: Modifier = Modifier,
     day: Int,
     events: List<Event>,
-    eventTypeColors: Map<EventType, Color>
+    eventTypeColors: Map<EventType, Color>,
+    onClick: (Int) -> Unit
 ) {
     Box(
         modifier = modifier
@@ -115,6 +121,11 @@ private fun RowScope.CalendarDay(
             .border(
                 width = 0.5.dp,
                 color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+            )
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = { onClick(day) }
             ),
         contentAlignment = Alignment.Center
     ) {
@@ -123,7 +134,9 @@ private fun RowScope.CalendarDay(
             text = day.toString(),
             color = MaterialTheme.colorScheme.onBackground,
             style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.align(Alignment.TopCenter).padding(top = 2.dp)
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 2.dp)
         )
 
         // Events indicators
@@ -140,7 +153,18 @@ private fun RowScope.CalendarDay(
                             .padding(horizontal = 2.dp)
                             .size(8.dp)
                             .clip(CircleShape)
-                            .background(eventTypeColors[event.type] ?: MaterialTheme.colorScheme.primary)
+                            .background(
+                                eventTypeColors[event.type] ?: MaterialTheme.colorScheme.primary
+                            )
+                    )
+                }
+
+                if (events.size > 3) {
+                    Text(
+                        text = "+",
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(start = 2.dp)
                     )
                 }
             }
