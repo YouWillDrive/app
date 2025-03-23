@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -27,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import ru.gd_alt.youwilldrive.models.Event
 import ru.gd_alt.youwilldrive.models.EventType
 import java.time.YearMonth
+import java.time.ZoneId
 import kotlin.random.Random
 
 @Composable
@@ -61,7 +61,7 @@ fun Calendar(
         // Calendar days grid
         var dayCounter = 1
 
-        for (row in 0 until (31 / 7) + 1) {
+        for (row in 0 until (daysInMonth / 7) + 1) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
@@ -79,7 +79,11 @@ fun Calendar(
                     } else {
                         // Day cell
                         val currentDay = dayCounter
-                        val dayEvents: List<Event> = emptyList() // TODO: Select events to display
+                        val dayEvents: List<Event> = events.filter {
+                            e ->
+                            java.time.Instant.ofEpochSecond(e.date.toLong())
+                                .atZone(ZoneId.systemDefault()).toLocalDateTime()
+                                .dayOfMonth == currentDay }
 
                         CalendarDay(
                             modifier = Modifier,
