@@ -1,7 +1,6 @@
 package ru.gd_alt.youwilldrive.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -14,7 +13,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -22,10 +26,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import ru.gd_alt.youwilldrive.R
 import ru.gd_alt.youwilldrive.models.Event
 import ru.gd_alt.youwilldrive.models.EventType
 import java.time.YearMonth
@@ -39,13 +45,15 @@ fun Calendar(
     month: Int = 10,
     year: Int = 2024,
     events: List<Event> = emptyList(),
-    onDayClick: (Int) -> Unit = {}  // New parameter for day click callback
+    onDayClick: (Int) -> Unit = {
+        day -> val selectedDate = "$day.$month.$year"
+        android.util.Log.d("Calendar", "Selected date: $selectedDate")
+    }
 ) {
     val yearMonth = YearMonth.of(year, month)
     val daysInMonth = yearMonth.lengthOfMonth()
-    val firstDayOfMonth = yearMonth.atDay(1).dayOfWeek.value % 7
+    val firstDayOfMonth = yearMonth.atDay(1).dayOfWeek.value % 7 - 1
 
-    // Map of event types to consistent colors
     val eventTypeColors = events
         .map { it.type }
         .distinctBy { it.id }
@@ -57,47 +65,71 @@ fun Calendar(
             )
         }
 
-    Column(modifier = modifier
-        .fillMaxWidth()
-        .background(Color.White)) {
-        // Calendar header with weekday names
-        CalendarHeader()
+    ElevatedCard(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(8.dp),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            // Calendar header with weekday names
+            CalendarHeader()
 
-        // Calendar days grid
-        var dayCounter = 1
-
-        for (row in 0 until (daysInMonth / 7) + 1) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                shape = RoundedCornerShape(12.dp)
             ) {
-                for (col in 0 until 7) {
-                    val dayIndex = row * 7 + col
-                    if (dayIndex < firstDayOfMonth || dayCounter > daysInMonth) {
-                        // Empty cell
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .aspectRatio(1f)
-                                .padding(2.dp)
-                        )
-                    } else {
-                        // Day cell
-                        val currentDay = dayCounter
-                        val dayEvents: List<Event> = events.filter {
-                            java.time.Instant.ofEpochSecond(it.date.toLong())
-                                .atZone(ZoneId.systemDefault()).toLocalDateTime()
-                                .dayOfMonth == currentDay }
+                // Calendar days grid
+                var dayCounter = 1
 
-                        CalendarDay(
-                            modifier = Modifier,
-                            day = currentDay,
-                            events = dayEvents,
-                            eventTypeColors = eventTypeColors,
-                            onDayClick
-                        )
+                Column(modifier = Modifier.padding(8.dp)) {
+                    for (row in 0 until (daysInMonth / 7) + 1) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            for (col in 0 until 7) {
+                                val dayIndex = row * 7 + col
+                                if (dayIndex < firstDayOfMonth || dayCounter > daysInMonth) {
+                                    // Empty cell
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .aspectRatio(1f)
+                                            .padding(2.dp)
+                                    )
+                                } else {
+                                    // Day cell
+                                    val currentDay = dayCounter
+                                    val dayEvents: List<Event> = events.filter {
+                                        java.time.Instant.ofEpochSecond(it.date.toLong())
+                                            .atZone(ZoneId.systemDefault()).toLocalDateTime()
+                                            .dayOfMonth == currentDay
+                                    }
 
-                        dayCounter++
+                                    CalendarDay(
+                                        modifier = Modifier,
+                                        day = currentDay,
+                                        events = dayEvents,
+                                        eventTypeColors = eventTypeColors,
+                                        onDayClick
+                                    )
+
+                                    dayCounter++
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -113,59 +145,69 @@ private fun RowScope.CalendarDay(
     eventTypeColors: Map<EventType, Color>,
     onClick: (Int) -> Unit
 ) {
-    Box(
+    Card(
         modifier = modifier
             .weight(1f)
             .aspectRatio(1f)
             .padding(2.dp)
-            .border(
-                width = 0.5.dp,
-                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
-            )
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
                 onClick = { onClick(day) }
             ),
-        contentAlignment = Alignment.Center
-    ) {
-        // Day number
-        Text(
-            text = day.toString(),
-            color = MaterialTheme.colorScheme.onBackground,
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 2.dp)
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (events.isNotEmpty())
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
+            else
+                MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (events.isNotEmpty()) 2.dp else 0.dp
         )
-
-        // Events indicators
-        if (events.isNotEmpty()) {
-            Row(
+    ) {
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            // Day number
+            Text(
+                text = day.toString(),
+                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 4.dp),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                events.take(3).forEach { event ->
-                    Box(
-                        modifier = Modifier
-                            .padding(horizontal = 2.dp)
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(
-                                eventTypeColors[event.type] ?: MaterialTheme.colorScheme.primary
-                            )
-                    )
-                }
+                    .align(Alignment.TopCenter)
+                    .padding(top = 4.dp)
+            )
 
-                if (events.size > 3) {
-                    Text(
-                        text = "+",
-                        color = MaterialTheme.colorScheme.primary,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(start = 2.dp)
-                    )
+            // Events indicators
+            if (events.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 4.dp),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    events.take(3).forEach { event ->
+                        Box(
+                            modifier = Modifier
+                                .padding(horizontal = 2.dp)
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    eventTypeColors[event.type] ?: MaterialTheme.colorScheme.primary
+                                )
+                        )
+                    }
+
+                    if (events.size > 3) {
+                        Text(
+                            text = "+",
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.padding(start = 1.dp)
+                        )
+                    }
                 }
             }
         }
@@ -174,21 +216,37 @@ private fun RowScope.CalendarDay(
 
 @Composable
 private fun CalendarHeader() {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly
+    Surface(
+        color = MaterialTheme.colorScheme.primaryContainer,
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth()
     ) {
-        val daysOfWeek = listOf("Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс")
-        daysOfWeek.forEach { day ->
-            Text(
-                text = day,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(vertical = 8.dp),
-                textAlign = TextAlign.Center,
-                fontWeight = FontWeight.Bold,
-                color = if (day == "Сб" || day == "Вс") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onBackground
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp, horizontal = 4.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            val daysOfWeek = listOf(stringResource(R.string.mon),
+                stringResource(R.string.tue), stringResource(R.string.wed),
+                stringResource(R.string.thu), stringResource(R.string.fri),
+                stringResource(R.string.sat), stringResource(R.string.sun)
             )
+            daysOfWeek.forEach { day ->
+                Text(
+                    text = day,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(vertical = 4.dp),
+                    textAlign = TextAlign.Center,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (day == stringResource(R.string.sat) || day == stringResource(R.string.sun))
+                        MaterialTheme.colorScheme.error
+                    else
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
         }
     }
 }

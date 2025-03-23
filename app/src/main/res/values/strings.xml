@@ -6,4 +6,26 @@
     <string name="login_btn">Вход</string>
     <string name="password_hide">Скрыть пароль</string>
     <string name="password_show">Показать пароль</string>
+    <string name="choose_month">Выберите месяц…</string>
+    <string name="january">январь</string>
+    <string name="february">февраль</string>
+    <string name="march">март</string>
+    <string name="april">апрель</string>
+    <string name="may">май</string>
+    <string name="june">июнь</string>
+    <string name="july">июль</string>
+    <string name="august">август</string>
+    <string name="september">сентябрь</string>
+    <string name="oktober">октябрь</string>
+    <string name="november">ноябрь</string>
+    <string name="december">декабрь</string>
+    <string name="mon">Пн</string>
+    <string name="tue">Вт</string>
+    <string name="wed">Ср</string>
+    <string name="thu">Чт</string>
+    <string name="fri">Пт</string>
+    <string name="sat">Сб</string>
+    <string name="sun">Вс</string>
+    <string name="previous_month">Назад</string>
+    <string name="next_month">Дальше</string>
 </resources>
