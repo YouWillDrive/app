@@ -28,4 +28,9 @@
     <string name="sun">Вс</string>
     <string name="previous_month">Назад</string>
     <string name="next_month">Дальше</string>
+    <string name="events">События</string>
+    <string name="no_events_planned">Запланированных событий нет!</string>
+    <string name="notifications">Уведомления</string>
+    <string name="no_notifications_yet">Уведомлений нет!</string>
+    <string name="yesterday">Вчера</string>
 </resources>
