@@ -61,7 +61,7 @@ fun Notifications(
             Card (
                 modifier = Modifier
                     .padding(6.dp, 4.dp),
-                shape = RoundedCornerShape(15.dp),
+                shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 ),
@@ -70,7 +70,7 @@ fun Notifications(
                 )
             ) {
                 Row (
-                    Modifier.fillMaxWidth().padding(6.dp),
+                    Modifier.fillMaxWidth().padding(10.dp),
                     horizontalArrangement = Arrangement.Start
                 ) {
                     Box(Modifier.size(50.dp).clip(CircleShape).background(Color.Red))
