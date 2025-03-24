@@ -70,38 +70,10 @@ fun Notifications(
         ),
     )
 ) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(8.dp),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Text(
-                text = stringResource(R.string.notifications),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-            HorizontalDivider()
-            Spacer(modifier = Modifier.height(8.dp))
-
-            if (notifications.isEmpty()) {
-                EmptyNotificationsView()
-            } else {
-                NotificationsList(notifications = notifications.sortedByDescending { it.dateSent })
-            }
-        }
+    if (notifications.isEmpty()) {
+        EmptyNotificationsView()
+    } else {
+        NotificationsList(notifications = notifications.sortedByDescending { it.dateSent })
     }
 }
 
@@ -134,6 +106,9 @@ private fun EmptyNotificationsView() {
 @Composable
 private fun NotificationsList(notifications: List<Notification>) {
     LazyColumn(
+        Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(notifications) { notification ->
