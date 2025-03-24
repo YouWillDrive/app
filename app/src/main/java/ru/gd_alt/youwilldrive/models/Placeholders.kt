@@ -1,7 +1,7 @@
 package ru.gd_alt.youwilldrive.models
 
-import java.time.LocalDateTime
 import ru.gd_alt.youwilldrive.UtilsProvider
+import java.time.LocalDateTime
 
 object Placeholders {
     val CurrentMonth = LocalDateTime.now().monthValue

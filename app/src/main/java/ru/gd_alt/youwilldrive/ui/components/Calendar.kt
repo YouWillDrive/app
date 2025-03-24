@@ -32,11 +32,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import ru.gd_alt.youwilldrive.R
-import ru.gd_alt.youwilldrive.models.Cadet
 import ru.gd_alt.youwilldrive.models.Event
 import ru.gd_alt.youwilldrive.models.EventType
 import ru.gd_alt.youwilldrive.models.Placeholders
-import ru.gd_alt.youwilldrive.models.User
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
