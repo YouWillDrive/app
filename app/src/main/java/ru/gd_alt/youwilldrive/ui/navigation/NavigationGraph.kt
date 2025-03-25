@@ -3,30 +3,29 @@ package ru.gd_alt.youwilldrive.ui.navigation
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.rememberNavController
 import androidx.navigation.compose.composable
+import kotlinx.serialization.Serializable
+import ru.gd_alt.youwilldrive.ui.components.Calendar
 import ru.gd_alt.youwilldrive.ui.screens.Login.LoginScreen
 
-// Define route constants
-object NavRoutes {
-    const val LOGIN = "login"
-    const val HOME = "home"
-    // Add more routes as needed
-}
+@Serializable
+object Login
+@Serializable
+object CalendarRoute
 
 @Composable
-fun NavigationGraph(navController: NavHostController) {
+fun NavigationGraph(navController: NavHostController = rememberNavController()) {
     NavHost(
         navController = navController,
-        startDestination = NavRoutes.LOGIN
+        startDestination = Login
     ) {
-        composable(NavRoutes.LOGIN) {
+        composable<Login> {
             LoginScreen(navController = navController)
         }
 
-        composable(NavRoutes.HOME) {
-            // TODO: Create and add HomeScreen
+        composable<CalendarRoute> {
+            Calendar()
         }
-
-        // Add more destinations as needed
     }
 }

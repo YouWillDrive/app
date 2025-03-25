@@ -8,7 +8,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.NavHostController
 import ru.gd_alt.youwilldrive.models.SupabaseClient
+import ru.gd_alt.youwilldrive.ui.navigation.NavigationGraph
 import ru.gd_alt.youwilldrive.ui.screens.Login.LoginScreenPreview
 import ru.gd_alt.youwilldrive.ui.theme.YouWillDriveTheme
 
@@ -19,7 +21,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             YouWillDriveTheme {
-                LoginScreenPreview()
+                NavigationGraph()
             }
         }
     }

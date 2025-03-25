@@ -47,7 +47,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
 import ru.gd_alt.youwilldrive.R
+import ru.gd_alt.youwilldrive.ui.components.Calendar
+import ru.gd_alt.youwilldrive.ui.navigation.CalendarRoute
 import ru.gd_alt.youwilldrive.ui.theme.YouWillDriveTheme
 
 @Composable
@@ -156,7 +160,7 @@ fun LoginScreen(navController: NavController? = null, viewModel: LoginViewModel 
 
                     // Login button
                     Button(
-                        onClick = { viewModel.login(phoneNumber, password) },
+                        onClick = { navController?.navigate(CalendarRoute) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),
