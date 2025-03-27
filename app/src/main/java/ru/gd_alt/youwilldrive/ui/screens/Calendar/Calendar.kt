@@ -1,4 +1,4 @@
-package ru.gd_alt.youwilldrive.ui.components
+package ru.gd_alt.youwilldrive.ui.screens.Calendar
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -17,12 +17,15 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import ru.gd_alt.youwilldrive.models.Event
 import ru.gd_alt.youwilldrive.models.Placeholders
+import ru.gd_alt.youwilldrive.ui.components.Calendar
+import ru.gd_alt.youwilldrive.ui.components.EventDisplay
+import ru.gd_alt.youwilldrive.ui.components.MonthSelector
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 
 @Composable
-fun CalendarEventSystem(
+fun CalendarScreen(
     modifier: Modifier = Modifier,
     events: List<Event> = Placeholders.DefaultEventList,
     initialMonth: Int = LocalDate.now().monthValue,
@@ -90,5 +93,5 @@ fun CalendarEventSystem(
 @Preview(showBackground = true)
 @Composable
 fun CalendarEventSystemPreview() {
-    CalendarEventSystem()
+    CalendarScreen()
 }
