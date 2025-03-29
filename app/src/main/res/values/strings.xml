@@ -33,4 +33,7 @@
     <string name="notifications">Уведомления</string>
     <string name="no_notifications_yet">Уведомлений нет!</string>
     <string name="yesterday">Вчера</string>
+    <string name="plan">Тариф</string>
+    <string name="practice_hours">Практика</string>
+    <string name="profile">Профиль</string>
 </resources>
