@@ -42,6 +42,8 @@ import ru.gd_alt.youwilldrive.models.User
 @Composable
 fun CadetProfileScreen() {
     Scaffold(
+        Modifier
+            .background(MaterialTheme.colorScheme.background),
         topBar = {
             TopAppBar(
                 title = {
