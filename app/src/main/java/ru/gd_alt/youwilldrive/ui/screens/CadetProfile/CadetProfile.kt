@@ -6,11 +6,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Card
@@ -42,8 +46,7 @@ import ru.gd_alt.youwilldrive.models.User
 @Composable
 fun CadetProfileScreen() {
     Scaffold(
-        Modifier
-            .background(MaterialTheme.colorScheme.background),
+        Modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
                 title = {
@@ -57,51 +60,78 @@ fun CadetProfileScreen() {
             )
         }
     ) {
-        Box (Modifier.padding(it)) {
+        Box(
+            Modifier
+                .padding(it)
+                .fillMaxSize()
+        ) {
             CadetProfile()
         }
     }
 }
-
 
 @Composable
 fun CadetProfile(
     cadet: Cadet = DefaultCadet
 ) {
     val user: User = cadet.user
+
     Column(
         Modifier
-            .padding(25.dp)
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp)
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceAround,
-            modifier = Modifier
-                .fillMaxWidth()
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(100.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary.copy()),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Default.Person,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(80.dp)
-                )
-            }
-            Text("${user.name} ${user.surname} ${user.patronymic}")
-        }
+        ProfileHeader(user)
+
+        Spacer(modifier = Modifier.height(24.dp))
+
         Card(
-            Modifier.padding(vertical = 25.dp),
-            elevation = CardDefaults.cardElevation(
-                defaultElevation = 2.dp
-            )
+            modifier = Modifier.fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            shape = RoundedCornerShape(16.dp)
         ) {
             InfoRows("Тариф для ${user.name}", cadet.practiceHours, 50)
+        }
+    }
+}
+
+@Composable
+fun ProfileHeader(user: User) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(96.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primary),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Default.Person,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(64.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.size(16.dp))
+
+        Column {
+            Text(
+                text = user.surname,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "${user.name} ${user.patronymic}",
+                style = MaterialTheme.typography.titleMedium
+            )
         }
     }
 }
@@ -112,43 +142,56 @@ fun InfoRows(
     practiceHours: Int,
     totalPractice: Int
 ) {
-    Column (
+    Column(
         Modifier
             .fillMaxWidth()
+            .padding(16.dp)
     ) {
-        Row (
+        Row(
             Modifier
                 .fillMaxWidth()
-                .padding(20.dp),
+                .padding(vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(stringResource(R.string.plan))
-            Text(planName)
+            Text(
+                stringResource(R.string.plan),
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                planName,
+                style = MaterialTheme.typography.bodyLarge
+            )
         }
-        Row (
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            stringResource(R.string.practice_hours),
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Row(
             Modifier
                 .fillMaxWidth()
-                .padding(20.dp),
-            verticalAlignment = Alignment.CenterVertically,
+                .padding(vertical = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(stringResource(R.string.practice_hours), Modifier.weight(1f))
-            Spacer(Modifier.weight(1f))
-            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(5.dp, 0.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("$practiceHours")
-                    Text("$totalPractice")
-                }
-                LinearProgressIndicator(
-                    progress = { practiceHours.toFloat() / totalPractice.toFloat() }
-                )
-            }
+            Text("$practiceHours", style = MaterialTheme.typography.bodyMedium)
+            Text("$totalPractice", style = MaterialTheme.typography.bodyMedium)
         }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        LinearProgressIndicator(
+            progress = { practiceHours.toFloat() / totalPractice.toFloat() },
+            modifier = Modifier.fillMaxWidth(),
+            trackColor = MaterialTheme.colorScheme.surfaceVariant
+        )
     }
 }

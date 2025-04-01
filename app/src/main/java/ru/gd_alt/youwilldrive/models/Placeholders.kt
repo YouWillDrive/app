@@ -9,8 +9,8 @@ object Placeholders {
     val CurrentDay = LocalDateTime.now().dayOfMonth
     val DefaultDateTime1: LocalDateTime = LocalDateTime.of(CurrentYear, CurrentMonth, CurrentDay, 16, 0)
     val DefaultDateTime2: LocalDateTime = LocalDateTime.of(CurrentYear, CurrentMonth, CurrentDay, 17, 0)
-    val DefaultDateTime3: LocalDateTime = LocalDateTime.of(CurrentYear, CurrentMonth, CurrentDay + 1, 18, 0)
-    val DefaultDateTime4: LocalDateTime = LocalDateTime.of(CurrentYear, CurrentMonth + 1, CurrentDay + 1, 19, 0)
+    val DefaultDateTime3: LocalDateTime = LocalDateTime.of(CurrentYear, CurrentMonth, 29, 18, 0)
+    val DefaultDateTime4: LocalDateTime = LocalDateTime.of(CurrentYear, CurrentMonth + 1, 30, 19, 0)
     val DefaultPlan = Plan(0, "Plan", 20, 20, 0.0f)
     val CadetRole = Role(1, "Cadet")
     val InstructorRole = Role(2, "Instructor")

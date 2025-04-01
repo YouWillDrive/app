@@ -8,14 +8,7 @@ import kotlinx.serialization.Serializable
 class User(val id: Int, var role: Role, var avatarPhoto: String, var phoneNum: String, var email: String, var pwdHash: String, var name: String, var surname: String, var patronymic: String) {
     companion object {
         suspend fun login(phoneNum: String, pwd: String): User? {
-            val entry = SupabaseClient.client.from("users").select {
-                filter {
-                    User::phoneNum eq phoneNum
-                    User::pwdHash eq Algorithm.BLAKE512.hash(pwd.toByteArray())
-                }
-            }.decodeAsOrNull<User>()
-
-            return entry
+            return null
         }
     }
 }
