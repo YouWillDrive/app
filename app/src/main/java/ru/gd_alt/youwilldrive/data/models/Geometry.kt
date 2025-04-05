@@ -39,7 +39,7 @@ class MultiPolygon(val polygons: List<Polygon>) : Geometry() {
     }
 }
 
-class GeometryCollection(val geometries: List<Geometry>) : Geometry() {
+class GeometryCollection(val geometries: List<Geometry?>) : Geometry() {
     override fun toString(): String {
         return "GeometryCollection(geometries=$geometries)"
     }

@@ -50,6 +50,7 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.2")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-cbor:1.6.0")
     implementation("com.upokecenter:cbor:4.5.2")
     implementation(platform("io.github.jan-tennert.supabase:bom:3.1.3"))

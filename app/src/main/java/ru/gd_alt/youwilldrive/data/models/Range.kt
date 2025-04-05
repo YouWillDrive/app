@@ -1,9 +1,11 @@
 package ru.gd_alt.youwilldrive.data.models
 
-import kotlin.reflect.typeOf
+abstract class Bound {
+    abstract fun <T> getValue(): T
+}
 
 
-class IncludedBound(var value: Any) {
+class IncludedBound(var value: Any) : Bound() {
     init {
         if (value !is Int && value !is Double && value !is Float && value !is Long && value !is String) {
             throw IllegalArgumentException("Unsupported type")
@@ -20,7 +22,7 @@ class IncludedBound(var value: Any) {
      *
      *
      */
-    fun <T> getValue(): T {
+    override fun <T> getValue(): T {
         return value as T
     }
 }
@@ -34,14 +36,14 @@ class IncludedBound(var value: Any) {
  * @throws IllegalArgumentException if the value is not of a supported type.
  *
  */
-class ExcludedBound(var value: Any) {
+class ExcludedBound(var value: Any) : Bound() {
     init {
         if (value !is Int && value !is Double && value !is Float && value !is Long && value !is String) {
             throw IllegalArgumentException("Unsupported type")
         }
     }
 
-    fun <T> getValue(): T {
+    override fun <T> getValue(): T {
         return value as T
     }
 }
@@ -56,7 +58,7 @@ class ExcludedBound(var value: Any) {
  * @throws IllegalArgumentException if min and max are not of the same type.
  *
  */
-class Range<T>(var min: IncludedBound, var max: ExcludedBound) {
+class Range<T>(var min: Bound, var max: Bound) {
     init {
         if (min::class.simpleName != max::class.simpleName) {
             throw IllegalArgumentException("min and max must be of the same type")

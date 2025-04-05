@@ -64,7 +64,8 @@ class CborInteractor(
 
         const val SIMPLE_FALSE = 20
         const val SIMPLE_TRUE = 21
-        const val SIMPLE_NULL = 22
+        // const val SIMPLE_NULL = 22
+        const val SIMPLE_NULL = 6
         const val SIMPLE_UNDEFINED = 23
 
         const val BREAK_STOP_CODE = 0xFF
