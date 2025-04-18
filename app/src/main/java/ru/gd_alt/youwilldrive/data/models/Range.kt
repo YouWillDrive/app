@@ -1,11 +1,7 @@
 package ru.gd_alt.youwilldrive.data.models
 
-abstract class Bound {
-    abstract fun <T> getValue(): T
-}
 
-
-class IncludedBound(var value: Any) : Bound() {
+class IncludedBound(var value: Any) {
     init {
         if (value !is Int && value !is Double && value !is Float && value !is Long && value !is String) {
             throw IllegalArgumentException("Unsupported type")
@@ -22,7 +18,7 @@ class IncludedBound(var value: Any) : Bound() {
      *
      *
      */
-    override fun <T> getValue(): T {
+    fun <T> getValue(): T {
         return value as T
     }
 }
@@ -36,16 +32,20 @@ class IncludedBound(var value: Any) : Bound() {
  * @throws IllegalArgumentException if the value is not of a supported type.
  *
  */
-class ExcludedBound(var value: Any) : Bound() {
+class ExcludedBound(var value: Any) {
     init {
         if (value !is Int && value !is Double && value !is Float && value !is Long && value !is String) {
             throw IllegalArgumentException("Unsupported type")
         }
     }
 
-    override fun <T> getValue(): T {
+    fun <T> getValue(): T {
         return value as T
     }
+}
+
+interface Bound {
+    fun <T> getValue(): T
 }
 
 /**
