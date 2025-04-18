@@ -18,7 +18,7 @@ class IncludedBound(var value: Any) {
      *
      *
      */
-    fun <T> getValue(): T {
+    fun <T> getVal(): T {
         return value as T
     }
 }
@@ -39,13 +39,13 @@ class ExcludedBound(var value: Any) {
         }
     }
 
-    fun <T> getValue(): T {
+    fun <T> getVal(): T {
         return value as T
     }
 }
 
 interface Bound {
-    fun <T> getValue(): T
+    fun <T> getVal(): T
 }
 
 /**
@@ -69,14 +69,14 @@ class Range<T>(var min: Bound, var max: Bound) {
      * Return the minimum bound.
      */
     fun <T> getMin(): T {
-        return min.getValue()
+        return min.getVal()
     }
 
     /**
      * Return the maximum bound.
      */
     fun <T> getMax(): T {
-        return max.getValue()
+        return max.getVal()
     }
 
     /**
@@ -88,8 +88,8 @@ class Range<T>(var min: Bound, var max: Bound) {
      * @return true if the value is within the range, false otherwise.
      */
     fun inBounds(value: T): Boolean {
-        var minValue = min.getValue<T>()
-        var maxValue = max.getValue<T>()
+        var minValue = min.getVal<T>()
+        var maxValue = max.getVal<T>()
         return when (value) {
             is Int -> value in (minValue as Int)..(maxValue as Int)
             is Double -> value in (minValue as Double)..(maxValue as Double)
