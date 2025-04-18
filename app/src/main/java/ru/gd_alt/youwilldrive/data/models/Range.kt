@@ -88,8 +88,8 @@ class Range<T>(var min: Bound, var max: Bound) {
      * @return true if the value is within the range, false otherwise.
      */
     fun inBounds(value: T): Boolean {
-        val minValue = min.getValue<T>()
-        val maxValue = max.getValue<T>()
+        var minValue = min.getValue<T>()
+        var maxValue = max.getValue<T>()
         return when (value) {
             is Int -> value in (minValue as Int)..(maxValue as Int)
             is Double -> value in (minValue as Double)..(maxValue as Double)
