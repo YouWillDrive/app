@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.max
 import ru.gd_alt.youwilldrive.R
 import ru.gd_alt.youwilldrive.models.Cadet
 import ru.gd_alt.youwilldrive.models.Car
+import ru.gd_alt.youwilldrive.models.Instructor
 import ru.gd_alt.youwilldrive.models.Placeholders.DefaultCadet
 import ru.gd_alt.youwilldrive.models.Placeholders.DefaultCar1
 import ru.gd_alt.youwilldrive.models.Placeholders.DefaultCar2
@@ -55,7 +56,7 @@ import ru.gd_alt.youwilldrive.models.User
 @OptIn(ExperimentalMaterial3Api::class)
 @Preview
 @Composable
-fun CadetProfileScreen() {
+fun InstructorProfileScreen() {
     Scaffold(
         Modifier.fillMaxSize(),
         topBar = {
@@ -76,13 +77,13 @@ fun CadetProfileScreen() {
                 .padding(it)
                 .fillMaxSize()
         ) {
-            CadetProfile()
+            InstructorProfile()
         }
     }
 }
 
 @Composable
-fun CadetProfile(
+fun InstructorProfile(
     cadet: Cadet = DefaultCadet
 ) {
     val user: User = cadet.user
@@ -100,7 +101,10 @@ fun CadetProfile(
         Card(
             shape = RoundedCornerShape(16.dp),
             modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer
+            )
         ) {
             Cars()
         }
@@ -110,7 +114,10 @@ fun CadetProfile(
         Card(
             shape = RoundedCornerShape(16.dp),
             modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer
+            )
         ) {
             Row(
                 Modifier.fillMaxWidth().padding(10.dp),
