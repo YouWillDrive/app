@@ -31,6 +31,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
+import kotlinx.datetime.toJavaLocalDateTime
 import ru.gd_alt.youwilldrive.R
 import ru.gd_alt.youwilldrive.models.Event
 import ru.gd_alt.youwilldrive.models.EventType
@@ -118,9 +121,7 @@ private fun EventsList(events: List<Event>) {
 
 @Composable
 private fun EventItem(event: Event) {
-    val dateTime = Instant.ofEpochSecond(event.date.epochSecond)
-        .atZone(ZoneId.systemDefault())
-        .toLocalDateTime()
+    val dateTime = event.date.toJavaLocalDateTime()
 
     val eventTypeColors = mutableMapOf<EventType, Color>(
         EventType("1", "1") to Color(0xFF39A0ED),

@@ -61,7 +61,7 @@ suspend fun <T : Identifiable> Identifiable.fetchRelatedList(
             linkMaps?.forEach { linkMap ->
                 // Use safe access ?.toString()
                 val inId = linkMap[if (isChild) "out" else "in"]?.toString()
-                if (inId == this@fetchRelatedList.id) { // 'this' refers to the Identifiable object (Car, User, etc.)
+                if (inId == this@fetchRelatedList.id.toString()) { // 'this' refers to the Identifiable object (Car, User, etc.)
                     val outId = linkMap[if (isChild) "in" else "out"]?.toString()
                     if (outId != null) {
                         try {

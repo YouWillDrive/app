@@ -15,4 +15,24 @@ class Cadet(override val id: String, var hoursAlready: Int) : Identifiable {
             )
         }
     }
+
+    suspend fun planHistoryPoints() : MutableList<PlanHistoryPoint> {
+        return fetchRelatedList<PlanHistoryPoint>("has_plan_points", PlanHistoryPoint::fromId, true)
+    }
+
+    suspend fun actualPlanPoint() : PlanHistoryPoint? {
+        val points = planHistoryPoints()
+        if (points.isEmpty()) {
+            return null
+        }
+        points.sortWith(Comparator<PlanHistoryPoint> { o1, o2 ->
+            o1.date.compareTo(o2.date)
+        })
+        points.reverse()
+        return points[0]
+    }
+
+    suspend fun events() : MutableList<Event> {
+        return fetchRelatedList<Event>("event_of_cadet", Event::fromId, true)
+    }
 }

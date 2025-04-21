@@ -75,9 +75,3 @@ class User(override val id: String, var avatarPhoto: String, var phoneNum: Strin
         return fetchRelatedSingle<Instructor>("is_instructor", Instructor::fromId)
     }
 }
-
-fun main() {
-    runBlocking {
-        print(User.authorize(null, "+78002654596", "12345678")?.isInstructor()?.cars()[0]?.color)
-    }
-}

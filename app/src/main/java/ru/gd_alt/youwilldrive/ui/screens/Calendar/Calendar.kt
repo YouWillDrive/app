@@ -15,6 +15,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import kotlinx.datetime.toJavaLocalDateTime
 import ru.gd_alt.youwilldrive.models.Event
 import ru.gd_alt.youwilldrive.models.Placeholders
 import ru.gd_alt.youwilldrive.ui.components.Calendar
@@ -41,9 +42,7 @@ fun CalendarScreen(
             emptyList()
         } else {
             events.filter { event ->
-                val eventDateTime = event.date
-                    .atZone(ZoneId.systemDefault())
-                    .toLocalDateTime()
+                val eventDateTime = event.date.toJavaLocalDateTime()
 
                 eventDateTime.dayOfMonth == selectedDay &&
                         eventDateTime.monthValue == currentMonth &&

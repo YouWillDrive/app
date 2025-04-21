@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import kotlinx.datetime.toJavaLocalDateTime
 import ru.gd_alt.youwilldrive.R
 import ru.gd_alt.youwilldrive.models.Event
 import ru.gd_alt.youwilldrive.models.EventType
@@ -38,6 +39,7 @@ import ru.gd_alt.youwilldrive.models.Placeholders
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
+import java.time.ZoneOffset
 
 @Composable
 @Preview
@@ -110,11 +112,11 @@ fun Calendar(
                                     // Day cell
                                     val currentDay = dayCounter
                                     val dayEvents: List<Event> = events.filter {
-                                        java.time.Instant.ofEpochSecond(it.date.epochSecond)
+                                        it.date.toJavaLocalDateTime().toInstant(ZoneOffset.of("+03:00"))
                                             .atZone(ZoneId.systemDefault()).toLocalDateTime()
                                             .dayOfMonth == currentDay
                                                 &&
-                                        java.time.Instant.ofEpochSecond(it.date.epochSecond)
+                                        it.date.toJavaLocalDateTime().toInstant(ZoneOffset.of("+03:00"))
                                             .atZone(ZoneId.systemDefault()).toLocalDateTime()
                                             .monthValue == month
                                     }
