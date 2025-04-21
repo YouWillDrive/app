@@ -42,32 +42,14 @@ import ru.gd_alt.youwilldrive.models.Placeholders.DefaultCadet
 import ru.gd_alt.youwilldrive.models.Placeholders.DefaultUser
 import ru.gd_alt.youwilldrive.models.User
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Preview
 @Composable
 fun CadetProfileScreen() {
-    Scaffold(
-        Modifier.fillMaxSize(),
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(stringResource(R.string.profile), fontWeight = FontWeight.Bold)
-                },
-                modifier = Modifier.clip(RoundedCornerShape(0.dp, 0.dp, 20.dp, 20.dp)),
-                colors = topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.primary,
-                )
-            )
-        }
+    Box(
+        Modifier
+            .fillMaxSize()
     ) {
-        Box(
-            Modifier
-                .padding(it)
-                .fillMaxSize()
-        ) {
-            CadetProfile()
-        }
+        CadetProfile()
     }
 }
 

@@ -54,6 +54,8 @@ fun CalendarScreen(
     Column(
         modifier = modifier.fillMaxSize()
     ) {
+        Spacer(modifier = Modifier.height(8.dp))
+
         // Month selector at the top
         MonthSelector(
             modifier = Modifier.padding(horizontal = 8.dp),

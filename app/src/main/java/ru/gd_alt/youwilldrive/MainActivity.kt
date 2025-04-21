@@ -24,13 +24,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import ru.gd_alt.youwilldrive.ui.components.BottomNavBar
+import ru.gd_alt.youwilldrive.ui.navigation.LoginRoute
 import ru.gd_alt.youwilldrive.ui.navigation.NavRoutes
 import ru.gd_alt.youwilldrive.ui.navigation.NavigationGraph
+import ru.gd_alt.youwilldrive.ui.navigation.navRouteByRoute
 import ru.gd_alt.youwilldrive.ui.theme.YouWillDriveTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
-    @SuppressLint("RestrictedApi")
+    @SuppressLint("RestrictedApi", "DiscouragedApi")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // val client = SupabaseClient.client
@@ -38,19 +41,27 @@ class MainActivity : ComponentActivity() {
         setContent {
             val navController = rememberNavController()
             val currentBackStackEntry by navController.currentBackStackEntryAsState()
-            val currentRoute by remember { derivedStateOf { currentBackStackEntry?.destination?.route ?: NavRoutes.login.value } }
-            YouWillDriveTheme {
+            val currentRoute by remember { derivedStateOf { currentBackStackEntry?.destination?.route ?: ".LoginRoute" } }
+            MaterialTheme {
                 Scaffold(
-                    topBar = {
+                    topBar = topBar@{
+                        if (navRouteByRoute(currentRoute) == NavRoutes[0]) return@topBar
                         TopAppBar(
                             title = {
-                                Text(stringResource(resources.getIdentifier(NavRoutes.valueOf(currentRoute).value, "string", packageName)), fontWeight = FontWeight.Bold)
+                                Text(
+                                    stringResource((navRouteByRoute(currentRoute) ?: NavRoutes[0]).titleId),
+                                    fontWeight = FontWeight.Bold)
                             },
                             modifier = Modifier.clip(RoundedCornerShape(0.dp, 0.dp, 20.dp, 20.dp)),
                             colors = topAppBarColors(
                                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                                 titleContentColor = MaterialTheme.colorScheme.primary,
                             )
+                        )
+                    },
+                    bottomBar = {
+                        BottomNavBar(
+                            navController = navController
                         )
                     }
                 ) {
