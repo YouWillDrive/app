@@ -1,6 +1,8 @@
 package ru.gd_alt.youwilldrive.ui.screens.Notifications
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -28,22 +30,7 @@ fun NotificationsScreen(
     navController: NavController? = null,
     viewModel: NotificationsViewModel = viewModel()
 ) {
-    Scaffold (
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(stringResource(R.string.notifications), fontWeight = FontWeight.Bold)
-                },
-                modifier = Modifier.clip(RoundedCornerShape(0.dp, 0.dp, 20.dp, 20.dp)),
-                colors = topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.primary,
-                )
-            )
-        }
-    ) {
-        Box(Modifier.padding(it)) {
-            Notifications()
-        }
+    Box(Modifier.fillMaxSize()) {
+        Notifications()
     }
 }

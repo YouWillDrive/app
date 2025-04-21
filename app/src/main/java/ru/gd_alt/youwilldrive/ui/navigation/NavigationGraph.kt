@@ -6,34 +6,32 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import ru.gd_alt.youwilldrive.ui.screens.CadetProfile.CadetProfileScreen
 import ru.gd_alt.youwilldrive.ui.screens.Calendar.CalendarScreen
 import ru.gd_alt.youwilldrive.ui.screens.Login.LoginScreen
 import ru.gd_alt.youwilldrive.ui.screens.Notifications.NotificationsScreen
-
-enum class NavRoutes(val value: String) {
-    login("login"),
-    calendar("calendar"),
-    notifications("notifications"),
-    profile("profile")
-}
 
 @Composable
 fun NavigationGraph(modifier: Modifier = Modifier, navController: NavHostController = rememberNavController()) {
     NavHost(
         modifier = modifier,
         navController = navController,
-        startDestination = NavRoutes.login.name
+        startDestination = LoginRoute
     ) {
-        composable(NavRoutes.login.name) {
+        composable<LoginRoute> {
             LoginScreen(navController = navController)
         }
 
-        composable(NavRoutes.calendar.name) {
+        composable<CalendarRoute> {
             CalendarScreen()
         }
 
-        composable(NavRoutes.notifications.name) {
+        composable<NotificationsRoute> {
             NotificationsScreen()
+        }
+
+        composable<ProfileRoute> {
+            CadetProfileScreen()
         }
     }
 }

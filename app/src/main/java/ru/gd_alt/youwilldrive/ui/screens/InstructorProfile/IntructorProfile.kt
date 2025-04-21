@@ -55,32 +55,14 @@ import ru.gd_alt.youwilldrive.models.Placeholders.DefaultInstructor
 import ru.gd_alt.youwilldrive.models.Placeholders.DefaultUser
 import ru.gd_alt.youwilldrive.models.User
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Preview
+@Preview(showBackground = true)
 @Composable
 fun InstructorProfileScreen() {
-    Scaffold(
-        Modifier.fillMaxSize(),
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(stringResource(R.string.profile), fontWeight = FontWeight.Bold)
-                },
-                modifier = Modifier.clip(RoundedCornerShape(0.dp, 0.dp, 20.dp, 20.dp)),
-                colors = topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.primary,
-                )
-            )
-        }
+    Box(
+        Modifier
+            .fillMaxSize()
     ) {
-        Box(
-            Modifier
-                .padding(it)
-                .fillMaxSize()
-        ) {
-            InstructorProfile()
-        }
+        InstructorProfile()
     }
 }
 
