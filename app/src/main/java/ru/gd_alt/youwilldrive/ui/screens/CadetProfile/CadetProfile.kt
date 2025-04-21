@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import ru.gd_alt.youwilldrive.R
 import ru.gd_alt.youwilldrive.models.Cadet
 import ru.gd_alt.youwilldrive.models.Placeholders.DefaultCadet
+import ru.gd_alt.youwilldrive.models.Placeholders.DefaultUser
 import ru.gd_alt.youwilldrive.models.User
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -74,7 +75,7 @@ fun CadetProfileScreen() {
 fun CadetProfile(
     cadet: Cadet = DefaultCadet
 ) {
-    val user: User = cadet.user
+    val user: User = /* cadet.user */ DefaultUser
 
     Column(
         Modifier
@@ -91,7 +92,7 @@ fun CadetProfile(
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
             shape = RoundedCornerShape(16.dp)
         ) {
-            InfoRows("Тариф для ${user.name}", cadet.practiceHours, 50)
+            InfoRows("Тариф для ${user.name}", cadet.hoursAlready, 50)
         }
     }
 }

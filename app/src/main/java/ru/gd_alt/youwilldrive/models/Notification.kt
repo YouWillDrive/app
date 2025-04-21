@@ -1,6 +1,5 @@
 package ru.gd_alt.youwilldrive.models
 
-import kotlinx.serialization.Serializable
+import java.time.Instant
 
-@Serializable
-class Notification(val id: Int, var user: User, var body: Map<String, String>, var dateSent: Int, var received: Boolean, var read: Boolean)
+class Notification(val id: String, var body: Map<String, String>, var dateSent: Instant, var received: Boolean, var read: Boolean)

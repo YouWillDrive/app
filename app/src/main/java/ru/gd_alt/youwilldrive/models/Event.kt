@@ -1,6 +1,5 @@
 package ru.gd_alt.youwilldrive.models
 
-import kotlinx.serialization.Serializable
+import java.time.Instant
 
-@Serializable
-class Event(val id: Int, var type: EventType, var cadet: Cadet, var instructor: Instructor, var date: Int)
+class Event(val id: String, var date: Instant)

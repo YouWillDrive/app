@@ -1,5 +1,6 @@
 package ru.gd_alt.youwilldrive.data.cbor
 
+import ru.gd_alt.youwilldrive.data.models.RpcRequest
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.EOFException
@@ -64,8 +65,7 @@ class CborInteractor(
 
         const val SIMPLE_FALSE = 20
         const val SIMPLE_TRUE = 21
-        // const val SIMPLE_NULL = 22
-        const val SIMPLE_NULL = 6
+        const val SIMPLE_NULL = 22
         const val SIMPLE_UNDEFINED = 23
 
         const val BREAK_STOP_CODE = 0xFF
@@ -81,9 +81,23 @@ class CborInteractor(
     // --- Encoding ---
 
     fun encode(item: Any?): ByteArray {
+        var itemAsMap: Map<Any, Any> = emptyMap<Any, Any>()
+
+        if (item is RpcRequest) {
+            itemAsMap = mapOf(
+                "id" to item.id,
+                "method" to item.method,
+                "params" to item.params
+            )
+        }
+
         val outputStream = ByteArrayOutputStream()
         try {
-            encodeItem(item, outputStream)
+            if (item is RpcRequest) {
+                encodeItem(itemAsMap, outputStream)
+            } else {
+                encodeItem(item, outputStream)
+            }
         } catch (e: CborException) {
             throw e // Re-throw specific exceptions
         } catch (e: Exception) {
@@ -485,7 +499,7 @@ class CborInteractor(
 
     private fun decodeSimpleFloat(addInfo: Int, value: Long?, stream: CborInputStream): Any? {
         return when (addInfo) {
-            in 0..19 -> addInfo // Simple values 0-19 (unassigned) - return the value itself
+            in 0..19 -> addInfo // Simple values 0-23 (unassigned) - return the value itself
             SIMPLE_FALSE -> false
             SIMPLE_TRUE -> true
             SIMPLE_NULL -> null

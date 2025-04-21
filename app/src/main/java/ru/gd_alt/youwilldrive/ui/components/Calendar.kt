@@ -56,10 +56,10 @@ fun Calendar(
     val firstDayOfMonth = yearMonth.atDay(1).dayOfWeek.value % 7 - 1
 
     val eventTypeColors = mutableMapOf<EventType, Color>(
-        EventType(1, "1") to Color(0xFF39A0ED),
-        EventType(2, "2") to Color(0xFF04724D),
-        EventType(3, "3") to Color(0xFF950952),
-        EventType(4, "4") to Color(0xFFD1D646),
+        EventType("1", "1") to Color(0xFF39A0ED),
+        EventType("2", "2") to Color(0xFF04724D),
+        EventType("3", "3") to Color(0xFF950952),
+        EventType("4", "4") to Color(0xFFD1D646),
     )
 
     ElevatedCard(
@@ -110,11 +110,11 @@ fun Calendar(
                                     // Day cell
                                     val currentDay = dayCounter
                                     val dayEvents: List<Event> = events.filter {
-                                        java.time.Instant.ofEpochSecond(it.date.toLong())
+                                        java.time.Instant.ofEpochSecond(it.date.epochSecond)
                                             .atZone(ZoneId.systemDefault()).toLocalDateTime()
                                             .dayOfMonth == currentDay
                                                 &&
-                                        java.time.Instant.ofEpochSecond(it.date.toLong())
+                                        java.time.Instant.ofEpochSecond(it.date.epochSecond)
                                             .atZone(ZoneId.systemDefault()).toLocalDateTime()
                                             .monthValue == month
                                     }
@@ -191,7 +191,8 @@ private fun RowScope.CalendarDay(
                                 .size(6.dp)
                                 .clip(CircleShape)
                                 .background(
-                                    eventTypeColors[event.type] ?: MaterialTheme.colorScheme.primary
+                                    // eventTypeColors[event.type] ?: MaterialTheme.colorScheme.primary
+                                    MaterialTheme.colorScheme.primary
                                 )
                         )
                     }

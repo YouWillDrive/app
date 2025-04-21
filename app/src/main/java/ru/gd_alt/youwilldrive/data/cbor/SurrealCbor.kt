@@ -40,8 +40,8 @@ val customDeHook: (Long, Any?) -> Any? = { tag, decodedItem ->
             BigDecimal(decodedItem as String)
         }
         CustomTags.TAG_DT -> {
-            val list = decodedItem as List<*>
-            Instant.fromEpochSeconds(list[0] as Long, list[1] as Int)
+            val list = decodedItem as List<Long>
+            Instant.fromEpochSeconds(list[0], list[1].toInt())
                 .toLocalDateTime(timeZone = TimeZone.of("Europe/Moscow"))
         }
         CustomTags.TAG_DURATION -> {

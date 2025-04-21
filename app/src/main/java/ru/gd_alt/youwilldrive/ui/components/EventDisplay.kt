@@ -118,15 +118,15 @@ private fun EventsList(events: List<Event>) {
 
 @Composable
 private fun EventItem(event: Event) {
-    val dateTime = Instant.ofEpochSecond(event.date.toLong())
+    val dateTime = Instant.ofEpochSecond(event.date.epochSecond)
         .atZone(ZoneId.systemDefault())
         .toLocalDateTime()
 
     val eventTypeColors = mutableMapOf<EventType, Color>(
-        EventType(1, "1") to Color(0xFF39A0ED),
-        EventType(2, "2") to Color(0xFF04724D),
-        EventType(3, "3") to Color(0xFF950952),
-        EventType(4, "4") to Color(0xFFD1D646),
+        EventType("1", "1") to Color(0xFF39A0ED),
+        EventType("2", "2") to Color(0xFF04724D),
+        EventType("3", "3") to Color(0xFF950952),
+        EventType("4", "4") to Color(0xFFD1D646),
     )
 
     val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
@@ -150,7 +150,7 @@ private fun EventItem(event: Event) {
             Surface(
                 modifier = Modifier.size(12.dp),
                 shape = CircleShape,
-                color = eventTypeColors[event.type] ?: Color.Gray
+                color = /* eventTypeColors[event.type] ?: */ Color.Gray
             ) {}
 
             Spacer(modifier = Modifier.width(16.dp))
@@ -160,13 +160,13 @@ private fun EventItem(event: Event) {
                 modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    text = event.type.name,
+                    text = /* event.type.name */ "A",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold
                 )
 
                 Text(
-                    text = event.cadet.user.name,
+                    text = /* event.cadet.user.name */ "Иванов Иван",
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis

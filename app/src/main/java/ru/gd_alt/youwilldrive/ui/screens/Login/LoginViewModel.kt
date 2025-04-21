@@ -12,11 +12,11 @@ class LoginViewModel : ViewModel() {
     private val _loginState = MutableStateFlow<LoginState>(LoginState.Idle)
     val loginState = _loginState.asStateFlow()
 
-    fun login(email: String, password: String) {
+    fun login(phone: String, password: String) {
         viewModelScope.launch {
             try {
                 _loginState.value = LoginState.Loading
-                val user = User.login(email, password)
+                val user = User.authorize(null, phone, password)
                 if (user != null) {
                     Log.d("LoginViewModel", "Login successful: $user")
                     _loginState.value = LoginState.Success(user)

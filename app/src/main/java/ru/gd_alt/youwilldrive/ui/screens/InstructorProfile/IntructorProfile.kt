@@ -51,6 +51,8 @@ import ru.gd_alt.youwilldrive.models.Placeholders.DefaultCar1
 import ru.gd_alt.youwilldrive.models.Placeholders.DefaultCar2
 import ru.gd_alt.youwilldrive.models.Placeholders.DefaultCar3
 import ru.gd_alt.youwilldrive.models.Placeholders.DefaultCar4
+import ru.gd_alt.youwilldrive.models.Placeholders.DefaultInstructor
+import ru.gd_alt.youwilldrive.models.Placeholders.DefaultUser
 import ru.gd_alt.youwilldrive.models.User
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -84,9 +86,9 @@ fun InstructorProfileScreen() {
 
 @Composable
 fun InstructorProfile(
-    cadet: Cadet = DefaultCadet
+    instructor: Instructor = DefaultInstructor
 ) {
-    val user: User = cadet.user
+    val user: User = /* cadet.user */ DefaultUser
 
     Column(
         Modifier

@@ -1,14 +1,83 @@
 package ru.gd_alt.youwilldrive.models
 
 import com.appmattus.crypto.Algorithm
-import io.github.jan.supabase.postgrest.from
-import kotlinx.serialization.Serializable
+import kotlinx.coroutines.runBlocking
+import ru.gd_alt.youwilldrive.data.client.Connection
 
-@Serializable
-class User(val id: Int, var role: Role, var avatarPhoto: String, var phoneNum: String, var email: String, var pwdHash: String, var name: String, var surname: String, var patronymic: String) {
-    companion object {
-        suspend fun login(phoneNum: String, pwd: String): User? {
+class User(override val id: String, var avatarPhoto: String, var phoneNum: String, var email: String, var pwdHash: String, var name: String, var surname: String, var patronymic: String) : Identifiable {
+    companion object: ModelCompanion<User> {
+        override val tableName: String = "users"
+
+        override fun fromDictionary(dictionary: Map<*, *>): User {
+            return User(
+                dictionary["id"]!!.toString(),
+                dictionary["avatar"]!!.toString(),
+                dictionary["phone"]!!.toString(),
+                dictionary["email"]!!.toString(),
+                dictionary["password_hash"]!!.toString(),
+                dictionary["name"]!!.toString(),
+                dictionary["surname"]!!.toString(),
+                dictionary["patronymic"]!!.toString()
+            )
+        }
+
+        fun encryptPassword(password: String): String {
+            val password = runBlocking {
+                val result = Connection.cl.query("SELECT * FROM crypto::blake3(\$password)", mapOf("password" to "12345678")) as List<Map<*, List<*>>>
+                return@runBlocking result[0]["result"]?.get(0)!!.toString()
+            }
+
+            return password
+        }
+
+        suspend fun fromPhoneNum(phoneNum: String): User? {
+            val users: List<User> = all()
+            for (user in users) {
+                if (user.phoneNum == phoneNum) {
+                    return user
+                }
+            }
             return null
         }
+
+        suspend fun fromEmail(email: String): User? {
+            val users: List<User> = all()
+            for (user in users) {
+                if (user.email == email) {
+                    return user
+                }
+            }
+            return null
+        }
+
+        suspend fun authorize(email: String?, phone: String?, password: String): User? {
+            val users: List<User> = all()
+            val passwordHash = encryptPassword(password)
+
+            for (user in users) {
+                if ((email != null && user.email == email) || (phone != null && user.phoneNum == phone) && user.pwdHash == passwordHash) {
+                    return user
+                }
+            }
+            return null
+        }
+    }
+
+    suspend fun role(): Role? {
+        return fetchRelatedSingle<Role>("of_role", Role::fromId)
+    }
+
+    suspend fun isCadet(): Cadet? {
+        return fetchRelatedSingle<Cadet>("is_cadet", Cadet::fromId)
+    }
+
+    suspend fun isInstructor(): Instructor? {
+        return fetchRelatedSingle<Instructor>("is_instructor", Instructor::fromId)
+    }
+}
+
+fun main() {
+    runBlocking {
+        print(User.authorize(null, "+78002654596", "12345678")?.isInstructor()?.cars()[0]?.color)
     }
 }

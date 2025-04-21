@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import ru.gd_alt.youwilldrive.R
 import ru.gd_alt.youwilldrive.models.Cadet
 import ru.gd_alt.youwilldrive.models.Placeholders.DefaultCadet
+import ru.gd_alt.youwilldrive.models.Placeholders.DefaultUser
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Preview
@@ -117,7 +118,8 @@ fun CadetCard(cadet: Cadet) {
                     )
                 }
                 Text(
-                    "${cadet.user.surname} ${cadet.user.name.first()}. ${cadet.user.patronymic.first()}.",
+                    /* "${cadet.user.surname} ${cadet.user.name.first()}. ${cadet.user.patronymic.first()}.", */
+                    text = "${DefaultUser.surname} ${DefaultUser.name.first()} ${DefaultUser.patronymic.first()}",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -135,14 +137,14 @@ fun CadetCard(cadet: Cadet) {
                     .padding(vertical = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("${cadet.practiceHours}", style = MaterialTheme.typography.bodyMedium)
+                Text("${cadet.hoursAlready}", style = MaterialTheme.typography.bodyMedium)
                 Text("${50}", style = MaterialTheme.typography.bodyMedium)
             }
 
             Spacer(modifier = Modifier.height(4.dp))
 
             LinearProgressIndicator(
-                progress = { cadet.practiceHours.toFloat() / 50.toFloat() },
+                progress = { cadet.hoursAlready.toFloat() / 50.toFloat() },
                 modifier = Modifier.fillMaxWidth(),
                 trackColor = MaterialTheme.colorScheme.surfaceVariant
             )

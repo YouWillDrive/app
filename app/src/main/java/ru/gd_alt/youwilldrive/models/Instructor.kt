@@ -1,6 +1,17 @@
 package ru.gd_alt.youwilldrive.models
+import kotlinx.coroutines.runBlocking
+import ru.gd_alt.youwilldrive.data.client.Connection
 
-import kotlinx.serialization.Serializable
+class Instructor(override val id: String) : Identifiable {
+    companion object: ModelCompanion<Instructor> {
+        override val tableName: String = "instructor"
 
-@Serializable
-class Instructor(val id: Int, var user: User, var car: Car)
+        override fun fromDictionary(dictionary: Map<*, *>): Instructor {
+            return Instructor(dictionary["id"]!!.toString())
+        }
+    }
+
+    suspend fun cars(): MutableList<Car> {
+        return fetchRelatedList<Car>("has_car", Car::fromId)
+    }
+}

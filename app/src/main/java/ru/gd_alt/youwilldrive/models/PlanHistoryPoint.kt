@@ -1,6 +1,5 @@
 package ru.gd_alt.youwilldrive.models
 
-import kotlinx.serialization.Serializable
+import java.time.Instant
 
-@Serializable
-class PlanHistoryPoint(val id: Int, var plan: Plan, val cadet: Cadet, var bonusHours: Int, var date: Int, var instructor: Instructor)
+class PlanHistoryPoint(val id: String, var bonusHours: Int, var date: Instant)

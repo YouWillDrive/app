@@ -41,8 +41,7 @@ fun CalendarScreen(
             emptyList()
         } else {
             events.filter { event ->
-                val eventDateTime = Instant
-                    .ofEpochSecond(event.date.toLong())
+                val eventDateTime = event.date
                     .atZone(ZoneId.systemDefault())
                     .toLocalDateTime()
 

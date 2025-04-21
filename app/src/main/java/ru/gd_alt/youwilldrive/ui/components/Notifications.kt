@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import kotlinx.datetime.DateTimePeriod
 import ru.gd_alt.youwilldrive.R
 import ru.gd_alt.youwilldrive.models.Notification
 import ru.gd_alt.youwilldrive.models.Placeholders.DefaultUser1
@@ -46,24 +47,24 @@ fun Notifications(
     modifier: Modifier = Modifier,
     notifications: List<Notification> = listOf(
         Notification(
-            123123123, DefaultUser1,
+            "123123123",
             mapOf(Pair("title", "Вам назначен экзамен в ГИБДД"),
                   Pair("message", "Приходите на ул. Пушкина, д. Колотушкина завтра в 11:00"),),
-            (System.currentTimeMillis() / 1000).toInt(),
+            Instant.now(),
             true, true
         ),
         Notification(
-            234234234, DefaultUser1,
+            "234234234",
             mapOf(Pair("title", "Перенести урок"),
                   Pair("message", "Ваш инструктор предложил перенести занятие на 13:00 30 февраля."),),
-            (System.currentTimeMillis() / 1000 - 86400).toInt(),
+            Instant.now().plusSeconds(86400),
             true, true
         ),
         Notification(
-            345345345, DefaultUser1,
+            "345345345",
             mapOf(Pair("title", "А вы знали, что…"),
                   Pair("message", "…чем больше вы спите за рулем, тем больше у вас сил для вождения."),),
-            (System.currentTimeMillis() / 1000 - 172800).toInt(),
+            (Instant.now().minusSeconds(172800)),
             false, true
         ),
     )
@@ -117,7 +118,7 @@ private fun NotificationsList(notifications: List<Notification>) {
 
 @Composable
 private fun NotificationItem(notification: Notification) {
-    val dateTime = Instant.ofEpochSecond(notification.dateSent.toLong())
+    val dateTime = notification.dateSent
         .atZone(ZoneId.systemDefault())
         .toLocalDateTime()
 
