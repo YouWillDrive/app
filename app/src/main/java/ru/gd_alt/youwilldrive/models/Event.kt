@@ -24,9 +24,3 @@ class Event(override val id: String, var date: LocalDateTime) : Identifiable {
         return fetchRelatedSingle<Instructor>("event_of_instructor", Instructor::fromId)
     }
 }
-
-fun main() {
-    runBlocking {
-        println(User.fromId("users:kcri1xildstepqjkxmhv")?.isCadet()?.events())
-    }
-}

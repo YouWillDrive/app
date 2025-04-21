@@ -40,10 +40,6 @@ interface ModelCompanion<T : Identifiable> {
  * @param relatedFromId A function reference (e.g., RelatedClass::fromId) to fetch the related object by its ID.
  * @param isChild Indicates if the current object is a child in the relationship (default is false, if true will fetch considering this id is out id).
  * @return A MutableList of related objects found. Returns an empty list if none are found or on error.
- *
- * !! WARNING: Uses runBlocking, which blocks the calling thread. Avoid in performance-sensitive code (like UI thread). !!
- * !! WARNING: Error handling is basic. Consider adding more robust checks and logging. !!
- * !! WARNING: Assumes Connection.cl.select returns List<Map<*, *>>? for these link tables. !!
  */
 suspend fun <T : Identifiable> Identifiable.fetchRelatedList(
     linkTableName: String,
