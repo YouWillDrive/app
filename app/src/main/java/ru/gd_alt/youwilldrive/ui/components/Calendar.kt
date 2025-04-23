@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -16,6 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -26,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -47,7 +50,7 @@ fun Calendar(
     modifier: Modifier = Modifier,
     month: Int = LocalDate.now().monthValue,
     year: Int = LocalDate.now().year,
-    events: List<Event> = Placeholders.DefaultEventList,
+    events: List<Event>? = Placeholders.DefaultEventList,
     onDayClick: (Int) -> Unit = {
         day -> val selectedDate = "$day.$month.$year"
         android.util.Log.d("Calendar", "Selected date: $selectedDate")
@@ -111,7 +114,7 @@ fun Calendar(
                                 } else {
                                     // Day cell
                                     val currentDay = dayCounter
-                                    val dayEvents: List<Event> = events.filter {
+                                    val dayEvents: List<Event> = events?.filter {
                                         it.date.toJavaLocalDateTime().toInstant(ZoneOffset.of("+03:00"))
                                             .atZone(ZoneId.systemDefault()).toLocalDateTime()
                                             .dayOfMonth == currentDay
@@ -119,7 +122,7 @@ fun Calendar(
                                         it.date.toJavaLocalDateTime().toInstant(ZoneOffset.of("+03:00"))
                                             .atZone(ZoneId.systemDefault()).toLocalDateTime()
                                             .monthValue == month
-                                    }
+                                    } ?: emptyList()
 
                                     CalendarDay(
                                         modifier = Modifier,
@@ -133,6 +136,20 @@ fun Calendar(
                                 }
                             }
                         }
+                    }
+                }
+
+                if (events == null) {
+                    Box(
+                        Modifier.fillMaxHeight(0.4f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            Modifier.size(100.dp),
+                            color = MaterialTheme.colorScheme.primary,
+                            strokeCap = StrokeCap.Round,
+                            strokeWidth = 10.dp
+                        )
                     }
                 }
             }

@@ -20,6 +20,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -37,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -48,14 +50,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import io.ktor.util.reflect.instanceOf
 import ru.gd_alt.youwilldrive.R
-import ru.gd_alt.youwilldrive.models.User
-import ru.gd_alt.youwilldrive.ui.navigation.CalendarRoute
-import ru.gd_alt.youwilldrive.ui.theme.YouWillDriveTheme
+import ru.gd_alt.youwilldrive.ui.navigation.ProfileRoute
 
 @Composable
-fun LoginScreen(navController: NavController? = null, viewModel: LoginViewModel = viewModel()) {
+fun LoginScreen(navController: NavController? = null, viewModel: LoginViewModel = viewModel(), onSuccessfulLogin: (userId: String) -> Unit) {
     var phoneNumber by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
@@ -87,7 +86,7 @@ fun LoginScreen(navController: NavController? = null, viewModel: LoginViewModel 
                 ) {
                     // App Logo
                     Image(
-                        painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                        painter = painterResource(id = R.drawable.ic_logo),
                         contentDescription = stringResource(id = R.string.app_name),
                         modifier = Modifier
                             .size(120.dp)
@@ -160,7 +159,16 @@ fun LoginScreen(navController: NavController? = null, viewModel: LoginViewModel 
                     // Login button
                     Button(
                         onClick = {
-                            navController?.navigate(CalendarRoute)
+                            viewModel.login(phoneNumber, password) { user, error ->
+                                if (user != null) {
+                                    onSuccessfulLogin(user.id)
+                                    navController?.navigate(ProfileRoute)
+                                }
+                                else {
+                                    phoneNumber = ""
+                                    password = ""
+                                }
+                            }
                         },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -170,11 +178,17 @@ fun LoginScreen(navController: NavController? = null, viewModel: LoginViewModel 
                             containerColor = MaterialTheme.colorScheme.primary
                         )
                     ) {
-                        Text(
-                            text = stringResource(id = R.string.login_btn).uppercase(),
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        if (viewModel.loginState.collectAsState().value == LoginState.Loading)
+                            CircularProgressIndicator(
+                                color = MaterialTheme.colorScheme.surfaceBright,
+                                strokeCap = StrokeCap.Round
+                            )
+                        else
+                            Text(
+                                text = stringResource(id = R.string.login_btn).uppercase(),
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                     }
                 }
             }
@@ -185,7 +199,5 @@ fun LoginScreen(navController: NavController? = null, viewModel: LoginViewModel 
 @Preview(showBackground = true)
 @Composable
 fun LoginScreenPreview() {
-    YouWillDriveTheme {
-        LoginScreen()
-    }
+    LoginScreen { }
 }

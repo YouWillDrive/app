@@ -3,38 +3,46 @@ package ru.gd_alt.youwilldrive.ui.screens.Login
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import ru.gd_alt.youwilldrive.R
 import ru.gd_alt.youwilldrive.models.User
+
+sealed class LoginState {
+    data object Idle : LoginState()
+    data object Loading : LoginState()
+}
 
 class LoginViewModel : ViewModel() {
     private val _loginState = MutableStateFlow<LoginState>(LoginState.Idle)
     val loginState = _loginState.asStateFlow()
 
-    fun login(phone: String, password: String) {
-        viewModelScope.launch {
+    fun login(phone: String, password: String, onResponse: (User?, String?) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            var user: User? = null
+            var error: String? = null
             try {
                 _loginState.value = LoginState.Loading
-                val user = User.authorize(null, phone, password)
+                user = User.authorize(null, phone, password)
                 if (user != null) {
                     Log.d("LoginViewModel", "Login successful: $user")
-                    _loginState.value = LoginState.Success(user)
+                    _loginState.value = LoginState.Idle
                 } else {
                     Log.d("LoginViewModel", "Login failed: Invalid credentials")
-                    _loginState.value = LoginState.Error("Invalid credentials")
+                    error = R.string.invalid_credentials.toString()
+                    _loginState.value = LoginState.Idle
                 }
             } catch (e: Exception) {
                 Log.e("LoginViewModel", "Login error", e)
-                _loginState.value = LoginState.Error(e.message ?: "Unknown error")
+                error = e.message ?: "Unknown error"
+                _loginState.value = LoginState.Idle
+            }
+            withContext(Dispatchers.Main) {
+                onResponse(user, error)
             }
         }
-    }
-
-    sealed class LoginState {
-        object Idle : LoginState()
-        object Loading : LoginState()
-        data class Success(val user: User) : LoginState()
-        data class Error(val message: String) : LoginState()
     }
 }

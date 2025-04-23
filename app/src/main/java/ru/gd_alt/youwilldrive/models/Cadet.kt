@@ -1,8 +1,5 @@
 package ru.gd_alt.youwilldrive.models
 
-import kotlinx.coroutines.runBlocking
-import ru.gd_alt.youwilldrive.data.client.Connection
-
 
 class Cadet(override val id: String, var hoursAlready: Int) : Identifiable {
     companion object: ModelCompanion<Cadet> {
@@ -25,14 +22,14 @@ class Cadet(override val id: String, var hoursAlready: Int) : Identifiable {
         if (points.isEmpty()) {
             return null
         }
-        points.sortWith(Comparator<PlanHistoryPoint> { o1, o2 ->
+        points.sortWith { o1, o2 ->
             o1.date.compareTo(o2.date)
-        })
+        }
         points.reverse()
         return points[0]
     }
 
-    suspend fun events() : MutableList<Event> {
-        return fetchRelatedList<Event>("event_of_cadet", Event::fromId, true)
+    suspend fun events() : List<Event> {
+        return fetchRelatedList("event_of_cadet", Event::fromId, true)
     }
 }
