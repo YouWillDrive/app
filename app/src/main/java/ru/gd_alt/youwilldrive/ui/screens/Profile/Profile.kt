@@ -21,10 +21,12 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -48,13 +51,12 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = viewModel()
 ) {
     val scope = rememberCoroutineScope()
-    var user: User by remember { mutableStateOf(DefaultUser) }
+    var user: User? by remember { mutableStateOf(null) }
     var userData: Any? = null
 
     LaunchedEffect(scope) {
-        Log.d("ProfileScreen", "Searching user by $userId")
         user = (User.fromId(userId) ?: DefaultUser)
-        Log.d("ProfileScreen", user.id)
+        Log.d("ProfileScreen", "${user?.id}")
         viewModel.fetchData(userId) { data, _ ->
             userData = data
         }
@@ -66,11 +68,74 @@ fun ProfileScreen(
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
-        ProfileHeader(user)
+        if (viewModel.profileState.collectAsState().value == ProfileState.Loading)
+            LoadingProfileHeader()
+        else
+            ProfileHeader(user ?: DefaultUser)
 
         Spacer(modifier = Modifier.height(24.dp))
 
         LoadingCard()
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun LoadingProfileHeader() {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(96.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primary),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Default.Person,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(64.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.size(16.dp))
+
+        Column column@{
+            val surnameHeight = with(LocalDensity.current) {
+                MaterialTheme.typography.titleLarge.lineHeight.toDp()
+            }
+            val nameHeight = with(LocalDensity.current) {
+                MaterialTheme.typography.titleMedium.lineHeight.toDp()
+            }
+
+            LinearProgressIndicator(
+                Modifier
+                    .fillMaxWidth(0.3f)
+                    .height(surnameHeight)
+                    .padding(vertical = surnameHeight / 4),
+                color = MaterialTheme.colorScheme.primary.copy(0.5f),
+                trackColor = MaterialTheme.colorScheme.primary.copy(0.2f),
+                strokeCap = StrokeCap.Butt,
+                gapSize = 0.dp
+            )
+
+
+            LinearProgressIndicator(
+                Modifier
+                    .fillMaxWidth(0.5f)
+                    .height(nameHeight)
+                    .padding(vertical = nameHeight / 4),
+                color = Color.Black.copy(0.5f),
+                trackColor = Color.Black.copy(0.2f),
+                strokeCap = StrokeCap.Butt,
+                gapSize = 0.dp
+            )
+        }
     }
 }
 
@@ -127,7 +192,9 @@ fun LoadingCard() {
             contentAlignment = Alignment.Center
         ) {
             CircularProgressIndicator(
-                Modifier.padding(20.dp).size(100.dp),
+                Modifier
+                    .padding(50.dp)
+                    .size(100.dp),
                 color = MaterialTheme.colorScheme.primary,
                 strokeCap = StrokeCap.Round,
                 strokeWidth = 10.dp

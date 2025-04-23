@@ -1,8 +1,6 @@
 package ru.gd_alt.youwilldrive.models
-import kotlinx.coroutines.runBlocking
-import ru.gd_alt.youwilldrive.data.client.Connection
 
-class Instructor(override val id: String) : Identifiable {
+class Instructor(override val id: String) : Participant {
     companion object: ModelCompanion<Instructor> {
         override val tableName: String = "instructor"
 

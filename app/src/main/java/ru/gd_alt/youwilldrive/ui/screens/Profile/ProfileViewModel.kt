@@ -15,8 +15,8 @@ sealed class ProfileState {
 }
 
 class ProfileViewModel: ViewModel() {
-    private val _profileState = MutableStateFlow<ProfileState>(ProfileState.Idle)
-    val calendarState = _profileState.asStateFlow()
+    private val _profileState = MutableStateFlow<ProfileState>(ProfileState.Loading)
+    val profileState = _profileState.asStateFlow()
 
     fun fetchData(userId: String, onResponse: (Any?, String?) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -26,6 +26,7 @@ class ProfileViewModel: ViewModel() {
             _profileState.value = ProfileState.Loading
             try {
                 data = user?.isCadet() ?: user?.isInstructor()
+                Thread.sleep(5000)
             }
             catch (e: Exception) {
                 error = e.message

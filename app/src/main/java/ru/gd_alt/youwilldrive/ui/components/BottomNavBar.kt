@@ -40,7 +40,7 @@ fun BottomNavBar(
                     Icon(
                         route.imageVector ?: Icons.Default.Circle,
                         contentDescription = stringResource(route.titleId),
-                        Modifier.size(40.dp)
+                        Modifier.size(24.dp)
                     )
                 },
                 label = { Text(stringResource(route.titleId)) },

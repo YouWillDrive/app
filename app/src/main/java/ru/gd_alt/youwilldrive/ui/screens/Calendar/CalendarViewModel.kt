@@ -17,7 +17,7 @@ sealed class CalendarState {
 }
 
 class CalendarViewModel : ViewModel() {
-    private val _calendarState = MutableStateFlow<CalendarState>(CalendarState.Idle)
+    private val _calendarState = MutableStateFlow<CalendarState>(CalendarState.Loading)
     val calendarState = _calendarState.asStateFlow()
 
     fun fetchEvents(userId: String, onResponse: (List<Event>?, String?) -> Unit) {
@@ -26,8 +26,8 @@ class CalendarViewModel : ViewModel() {
             var events: List<Event>? = null
             var error: String? = null
             try {
-                Log.d("fetchEvent", "${User.fromId(userId)?.isInstructor()}")
-                events = User.fromId(userId)?.isCadet()?.events()
+                val user: User? = User.fromId(userId)
+                events = (user?.isCadet() ?: user?.isInstructor())?.events() ?: listOf()
                 Log.d("fetchEvent", "Loaded events: $events")
             } catch (e: Exception) {
                 error = e.message

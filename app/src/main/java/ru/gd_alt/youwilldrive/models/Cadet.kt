@@ -1,7 +1,7 @@
 package ru.gd_alt.youwilldrive.models
 
 
-class Cadet(override val id: String, var hoursAlready: Int) : Identifiable {
+class Cadet(override val id: String, var hoursAlready: Int) : Participant {
     companion object: ModelCompanion<Cadet> {
         override val tableName: String = "cadet"
 
@@ -27,9 +27,5 @@ class Cadet(override val id: String, var hoursAlready: Int) : Identifiable {
         }
         points.reverse()
         return points[0]
-    }
-
-    suspend fun events() : List<Event> {
-        return fetchRelatedList("event_of_cadet", Event::fromId, true)
     }
 }

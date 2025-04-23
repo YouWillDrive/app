@@ -132,3 +132,9 @@ suspend fun <T : Identifiable> Identifiable.fetchRelatedSingle(
     }
     return relatedObject
 }
+
+interface Participant: Identifiable {
+    suspend fun events() : List<Event> {
+        return fetchRelatedList("event_of_cadet", Event::fromId, true)
+    }
+}
