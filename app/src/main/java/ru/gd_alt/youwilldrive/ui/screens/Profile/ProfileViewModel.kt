@@ -1,5 +1,6 @@
 package ru.gd_alt.youwilldrive.ui.screens.Profile
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
@@ -7,6 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import ru.gd_alt.youwilldrive.models.Participant
 import ru.gd_alt.youwilldrive.models.User
 
 sealed class ProfileState {
@@ -18,14 +20,16 @@ class ProfileViewModel: ViewModel() {
     private val _profileState = MutableStateFlow<ProfileState>(ProfileState.Loading)
     val profileState = _profileState.asStateFlow()
 
-    fun fetchData(userId: String, onResponse: (Any?, String?) -> Unit) {
+    fun fetchData(userId: String, onResponse: (Participant?, String?) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
             val user = User.fromId(userId)
-            var data: Any? = null
+            var data: Participant? = null
             var error: String? = null
             _profileState.value = ProfileState.Loading
             try {
+                Log.d("fetchData", "${user?.isCadet()} ${user?.isInstructor()}")
                 data = user?.isCadet() ?: user?.isInstructor()
+                Log.d("fetchData", "$data")
                 Thread.sleep(5000)
             }
             catch (e: Exception) {

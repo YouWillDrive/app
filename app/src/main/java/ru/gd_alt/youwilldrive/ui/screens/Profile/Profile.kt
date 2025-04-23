@@ -11,13 +11,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -42,8 +41,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import ru.gd_alt.youwilldrive.models.Cadet
+import ru.gd_alt.youwilldrive.models.Instructor
+import ru.gd_alt.youwilldrive.models.Participant
 import ru.gd_alt.youwilldrive.models.Placeholders.DefaultUser
 import ru.gd_alt.youwilldrive.models.User
+import ru.gd_alt.youwilldrive.ui.screens.CadetInfo.CadetInfo
+import ru.gd_alt.youwilldrive.ui.screens.InstructorInfo.InstructorInfo
 
 @Composable
 fun ProfileScreen(
@@ -52,12 +58,15 @@ fun ProfileScreen(
 ) {
     val scope = rememberCoroutineScope()
     var user: User? by remember { mutableStateOf(null) }
-    var userData: Any? = null
+    var userData: Participant? by remember { mutableStateOf(null) }
 
     LaunchedEffect(scope) {
-        user = (User.fromId(userId) ?: DefaultUser)
+        withContext(Dispatchers.IO) {
+            user = (User.fromId(userId) ?: DefaultUser)
+        }
         Log.d("ProfileScreen", "${user?.id}")
-        viewModel.fetchData(userId) { data, _ ->
+        viewModel.fetchData(userId) { data, error ->
+            Log.d("ProfileScreen", "Data: $data\nError: $error")
             userData = data
         }
     }
@@ -65,7 +74,6 @@ fun ProfileScreen(
     Column(
         Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
         if (viewModel.profileState.collectAsState().value == ProfileState.Loading)
@@ -75,7 +83,21 @@ fun ProfileScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        LoadingCard()
+
+        if (viewModel.profileState.collectAsState().value == ProfileState.Loading)
+            LoadingCard()
+        else {
+            Log.d("ProfileScreen", "Loaded userData. ${userData}")
+            when (userData) {
+                is Cadet -> {
+                    CadetInfo(userData as Cadet)
+                }
+                is Instructor -> {
+                    InstructorInfo(userData as Instructor)
+                }
+            }
+        }
+
     }
 }
 
@@ -181,11 +203,14 @@ fun ProfileHeader(user: User) {
 
 @Preview(showBackground = true)
 @Composable
-fun LoadingCard() {
+fun LoadingCard(
+    colors: CardColors = CardDefaults.cardColors()
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(16.dp)
+        shape = RoundedCornerShape(16.dp),
+        colors = colors
     ) {
         Box(
             Modifier.fillMaxSize(),

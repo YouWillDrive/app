@@ -1,4 +1,4 @@
-package ru.gd_alt.youwilldrive.ui.screens.CadetProfile
+package ru.gd_alt.youwilldrive.ui.screens.CadetInfo
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,15 +14,52 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.gd_alt.youwilldrive.R
+import ru.gd_alt.youwilldrive.models.Cadet
+import ru.gd_alt.youwilldrive.models.Placeholders.DefaultCadet
+import ru.gd_alt.youwilldrive.models.Plan
+import ru.gd_alt.youwilldrive.ui.screens.Profile.LoadingCard
 
-@Preview(showBackground = true)
+
+@Composable
+fun CadetInfo(
+    cadet: Cadet = DefaultCadet,
+    viewModel: CadetInfoViewModel = viewModel()
+) {
+    val scope = rememberCoroutineScope()
+    var plan: Plan? by remember { mutableStateOf(null) }
+
+    LaunchedEffect(scope) {
+        viewModel.fetchPlan(cadet) { data, _ ->
+            plan = data
+        }
+    }
+
+    if (viewModel.cadetInfoState.collectAsState().value == CadetInfoState.Loading) {
+        LoadingCard()
+        return
+    }
+
+    CadetInfoRows(
+        planName = plan?.name ?: stringResource(R.string.plan),
+        practiceHours = cadet.hoursAlready,
+        totalPractice = plan?.practiceHours ?: 1
+    )
+}
+
 @Composable
 fun CadetInfoRows(
     planName: String = "Тариф",

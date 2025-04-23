@@ -1,8 +1,6 @@
-package ru.gd_alt.youwilldrive.ui.screens.InstructorProfile
+package ru.gd_alt.youwilldrive.ui.screens.InstructorInfo
 
 
-import androidx.compose.animation.VectorConverter
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,62 +13,55 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DirectionsCar
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.max
+import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.gd_alt.youwilldrive.R
-import ru.gd_alt.youwilldrive.models.Cadet
 import ru.gd_alt.youwilldrive.models.Car
 import ru.gd_alt.youwilldrive.models.Instructor
-import ru.gd_alt.youwilldrive.models.Placeholders.DefaultCadet
 import ru.gd_alt.youwilldrive.models.Placeholders.DefaultCar1
 import ru.gd_alt.youwilldrive.models.Placeholders.DefaultCar2
 import ru.gd_alt.youwilldrive.models.Placeholders.DefaultCar3
 import ru.gd_alt.youwilldrive.models.Placeholders.DefaultCar4
 import ru.gd_alt.youwilldrive.models.Placeholders.DefaultInstructor
-import ru.gd_alt.youwilldrive.models.Placeholders.DefaultUser
-import ru.gd_alt.youwilldrive.models.User
+import ru.gd_alt.youwilldrive.ui.screens.Profile.LoadingCard
 
 @Preview(showBackground = true)
 @Composable
-fun InstructorProfileScreen() {
-    Box(
-        Modifier
-            .fillMaxSize()
-    ) {
-        InstructorProfile()
-    }
-}
-
-@Composable
-fun InstructorProfile(
-    instructor: Instructor = DefaultInstructor
+fun InstructorInfo(
+    instructor: Instructor = DefaultInstructor,
+    viewModel: InstructorInfoViewModel = viewModel()
 ) {
-    val user: User = /* cadet.user */ DefaultUser
+    val scope = rememberCoroutineScope()
+    var cars: List<Car>? by remember { mutableStateOf(null) }
+    LaunchedEffect(scope) {
+        viewModel.fetchCars(instructor) { result, error ->
+            cars = result
+        }
+    }
 
     Column(
         Modifier
@@ -78,19 +69,24 @@ fun InstructorProfile(
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
-        ProfileHeader(user)
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.secondaryContainer
+        if (viewModel.instructorInfoState.collectAsState().value == InstructorInfoState.Loading) {
+            LoadingCard(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                )
             )
-        ) {
-            Cars()
+        }
+        else {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth(),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                )
+            ) {
+                Cars(cars ?: emptyList())
+            }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -116,46 +112,6 @@ fun InstructorProfile(
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary)
             }
-        }
-    }
-}
-
-@Composable
-fun ProfileHeader(user: User) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(96.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primary),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                Icons.Default.Person,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(64.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.size(16.dp))
-
-        Column {
-            Text(
-                text = user.surname,
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = "${user.name} ${user.patronymic}",
-                style = MaterialTheme.typography.titleMedium
-            )
         }
     }
 }
