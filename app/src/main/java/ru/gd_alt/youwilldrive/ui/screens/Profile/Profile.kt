@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -85,7 +86,9 @@ fun ProfileScreen(
 
 
         if (viewModel.profileState.collectAsState().value == ProfileState.Loading)
-            LoadingCard()
+            Box(Modifier.fillMaxWidth().fillMaxHeight(0.5f)) {
+                LoadingCard()
+            }
         else {
             Log.d("ProfileScreen", "Loaded userData. ${userData}")
             when (userData) {

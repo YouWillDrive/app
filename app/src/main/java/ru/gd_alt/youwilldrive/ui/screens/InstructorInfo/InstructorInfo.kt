@@ -67,23 +67,15 @@ fun InstructorInfo(
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp)
     ) {
         if (viewModel.instructorInfoState.collectAsState().value == InstructorInfoState.Loading) {
-            LoadingCard(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer
-                )
-            )
+            LoadingCard()
         }
         else {
             Card(
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer
-                )
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Cars(cars ?: emptyList())
             }
@@ -94,10 +86,7 @@ fun InstructorInfo(
         Card(
             shape = RoundedCornerShape(16.dp),
             modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.secondaryContainer
-            )
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Row(
                 Modifier.fillMaxWidth().padding(10.dp),

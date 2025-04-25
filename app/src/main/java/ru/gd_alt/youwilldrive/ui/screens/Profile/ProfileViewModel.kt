@@ -27,10 +27,8 @@ class ProfileViewModel: ViewModel() {
             var error: String? = null
             _profileState.value = ProfileState.Loading
             try {
-                Log.d("fetchData", "${user?.isCadet()} ${user?.isInstructor()}")
                 data = user?.isCadet() ?: user?.isInstructor()
                 Log.d("fetchData", "$data")
-                Thread.sleep(5000)
             }
             catch (e: Exception) {
                 error = e.message
