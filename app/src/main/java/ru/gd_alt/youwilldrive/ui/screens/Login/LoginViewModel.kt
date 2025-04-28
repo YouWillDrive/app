@@ -26,6 +26,7 @@ class LoginViewModel : ViewModel() {
             var error: String? = null
             try {
                 _loginState.value = LoginState.Loading
+                Log.d("LoginViewModel", "Loading...")
                 user = User.authorize(null, phone, password)
                 if (user != null) {
                     Log.d("LoginViewModel", "Login successful: $user")
