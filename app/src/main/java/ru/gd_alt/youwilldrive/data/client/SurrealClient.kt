@@ -1,12 +1,13 @@
 package ru.gd_alt.youwilldrive.data.client
 
+import androidx.compose.runtime.State
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.java_websocket.client.WebSocketClient
 import org.java_websocket.handshake.ServerHandshake
 import ru.gd_alt.youwilldrive.data.cbor.SurrealCbor
-import ru.gd_alt.youwilldrive.data.models.* // Assuming your data models including geometry, bounds, RecordID, TableName, LiveQueryUpdate are here
+import ru.gd_alt.youwilldrive.data.models.*
 import java.net.URI
 import java.nio.ByteBuffer
 import java.util.concurrent.ConcurrentHashMap
@@ -17,6 +18,9 @@ import org.java_websocket.extensions.IExtension
 import org.java_websocket.protocols.IProtocol
 import org.java_websocket.protocols.Protocol
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import java.util.concurrent.atomic.AtomicBoolean
 
 
 private abstract class CallbackType<T>
@@ -57,6 +61,15 @@ sealed class RpcResponsePayload {
     data class Error(val error: RpcErrorDetails) : RpcResponsePayload()
 }
 
+enum class Status {
+    CONNECTED,
+    DISCONNECTED,
+    RECONNECTING,
+    CONNECTING,
+    READY,
+    FAILED
+}
+
 /**
  * SurrealDB asynchronous client implemented in Kotlin with Java-WebSocket and CBOR.
  * Uses Kotlin Coroutines for asynchronous operations.
@@ -64,7 +77,8 @@ sealed class RpcResponsePayload {
 class SurrealDBClient(
     endpoint: String,
     private val user: String,
-    private val password: String
+    private val password: String,
+    private val onConnectCallback: suspend (SurrealDBClient) -> Unit = {},
 ) {
     private var webSocketClient: WebSocketClient? = null
     private val nextId = AtomicLong(0) // Atomic counter for request IDs
@@ -84,7 +98,17 @@ class SurrealDBClient(
     private val protocols: List<IProtocol> = mutableListOf<IProtocol>(Protocol("cbor"))
 
     // Deferred to signal when the initial connection and signin are complete
-    private val connectionReadyDeferred = CompletableDeferred<Unit>()
+    private var connectionReadyDeferred = CompletableDeferred<Unit>()
+
+    // State of the connection
+    private val _connectionState = MutableStateFlow(Status.DISCONNECTED)
+    val connectionState: StateFlow<Status> = _connectionState
+    val attemptReconnect = AtomicBoolean(false)
+    val backoff = AtomicLong(0)
+
+    // Data to save between connections
+    val uri : URI
+    val draft = Draft_6455(emptyList<IExtension>(), protocols)
 
     init {
         // Validate endpoint format
@@ -93,14 +117,21 @@ class SurrealDBClient(
         }
 
         // Ensure endpoint ends with /rpc
-        val uri = URI(if (endpoint.endsWith("/rpc")) endpoint else "$endpoint/rpc")
+        uri = URI(if (endpoint.endsWith("/rpc")) endpoint else "$endpoint/rpc")
+        handleConnection()
+    }
 
+    fun handleConnection() {
         // Initialize the WebSocket client with callbacks
-        webSocketClient = object : WebSocketClient(uri, Draft_6455(emptyList<IExtension>(), protocols)) {
+        webSocketClient = object : WebSocketClient(uri, draft) {
             override fun onOpen(handshakedata: ServerHandshake?) {
                 logger.info {"SurrealDB WebSocket connected: ${handshakedata?.httpStatus} - ${handshakedata?.httpStatusMessage}"}
+                _connectionState.value = Status.CONNECTED
                 // Perform signin immediately upon successful connection
                 clientScope.launch {
+                    if (backoff.get() < 30000L) {
+                        backoff.addAndGet(100L)
+                    }
                     val signinId = nextId.incrementAndGet()
                     val signinRequest = RpcRequest(id = signinId, method = "signin", params = listOf(mapOf("user" to user, "pass" to password)))
                     val signinDeferred = CompletableDeferred<RpcResponsePayload>()
@@ -115,6 +146,17 @@ class SurrealDBClient(
                             is RpcResponsePayload.Success -> {
                                 logger.info { "SurrealDB signin successful" }
                                 connectionReadyDeferred.complete(Unit) // Signal that the client is ready for use
+                                // Call the onConnect callback
+                                try {
+                                    onConnectCallback(this@SurrealDBClient)
+                                } catch (e: Exception) {
+                                    logger.error { "Error in onConnect callback: ${e.message}" }
+                                    connectionReadyDeferred.completeExceptionally(e) // Signal failure
+                                    closeConnection(0, "") // Close the connection on error
+                                    _connectionState.value = Status.FAILED
+                                }
+                                _connectionState.value = Status.READY
+                                backoff.set(0L) // Reset backoff on successful signin
                             }
                             is RpcResponsePayload.Error -> {
                                 val error = signInResult.error
@@ -122,6 +164,8 @@ class SurrealDBClient(
                                 logger.error { errorMessage }
                                 connectionReadyDeferred.completeExceptionally(ConnectionError(errorMessage)) // Signal failure
                                 closeConnection(0, "") // Close the connection on authentication failure
+                                _connectionState.value = Status.FAILED
+                                delay(backoff.get())
                             }
                         }
                     } catch (e: Exception) {
@@ -136,6 +180,8 @@ class SurrealDBClient(
                             connectionReadyDeferred.completeExceptionally(ConnectionError(errorMessage, e))
                         }
                         closeConnection(0, "") // Close on exception
+                        _connectionState.value = Status.FAILED
+                        delay(backoff.get())
                     } finally {
                         pendingRequests.remove(signinId) // Clean up the signin deferred regardless of outcome
                     }
@@ -145,7 +191,6 @@ class SurrealDBClient(
             override fun onMessage(message: String?) {
                 // SurrealDB primarily uses CBOR for RPC, text messages are unexpected for standard RPC
                 logger.error { "Received unexpected text message: $message" }
-                // Handle if necessary based on server behavior, maybe some broadcast messages?
             }
 
             override fun onMessage(bytes: ByteBuffer?) {
@@ -186,6 +231,15 @@ class SurrealDBClient(
 
                 // Cancel the client's coroutine scope
                 clientScope.cancel()
+                connectionReadyDeferred = CompletableDeferred<Unit>() // Reset the deferred for next connection attempt
+
+                if (attemptReconnect.get()) {
+                    logger.info { "Attempting to reconnect..." }
+                    _connectionState.value = Status.RECONNECTING
+                    handleConnection()
+                } else {
+                    _connectionState.value = Status.DISCONNECTED
+                }
             }
 
             override fun onError(ex: Exception?) {
@@ -200,7 +254,14 @@ class SurrealDBClient(
                 if (!connectionReadyDeferred.isCompleted) {
                     connectionReadyDeferred.completeExceptionally(error)
                 }
-                // onClose will likely be called after onError
+
+                if (attemptReconnect.get()) {
+                    logger.info { "Attempting to reconnect..." }
+                    _connectionState.value = Status.RECONNECTING
+                    handleConnection()
+                } else {
+                    _connectionState.value = Status.DISCONNECTED
+                }
             }
         }
 
@@ -210,17 +271,18 @@ class SurrealDBClient(
             // This aligns better with the constructor finishing only when the connection state is determined.
             // Sign-in is handled async in onOpen.
             webSocketClient?.connectBlocking()
+            _connectionState.value = Status.CONNECTING
         } catch (e: Exception) {
             val message = "Failed to establish SurrealDB WebSocket connection"
             logger.error { "$message: ${e.message}" }
             // If connectBlocking fails, the connectionReadyDeferred is completed exceptionally here
             if (!connectionReadyDeferred.isCompleted) {
                 connectionReadyDeferred.completeExceptionally(ConnectionError(message, e))
+                _connectionState.value = Status.FAILED
             }
             // Re-throw the exception from the constructor as connection failed
             throw ConnectionError(message, e)
         }
-        // If connectBlocking succeeds, onOpen will be called asynchronously.
     }
 
     /**
@@ -716,6 +778,7 @@ class SurrealDBClient(
         logger.info { "Closing SurrealDB client..." }
         // Cancel the CoroutineScope, which will cancel all coroutines launched within it
         clientScope.cancel()
+        attemptReconnect.set(false)
 
         // Close the WebSocket connection gracefully
         webSocketClient?.let {
@@ -783,10 +846,16 @@ fun main() {
     // Example usage of the SurrealDBClient
     runBlocking {
         try {
-            val client = SurrealDBClient("ws://87.242.117.89:5457/rpc", "root", "iwilldrive")
+            val client = SurrealDBClient(
+                "ws://87.242.117.89:5457/rpc",
+                "root",
+                "iwilldrive"
+            ) { client ->
+                // This is the onConnect callback
+                println("Connected to SurrealDB ${client.version()}")
+                client.use("main", "main")
+            }
             println("Connected to SurrealDB successfully!")
-            // Perform operations with the client...
-            println(client.version())
             client.close()
         } catch (e: Exception) {
             println("Error: ${e.message}")
