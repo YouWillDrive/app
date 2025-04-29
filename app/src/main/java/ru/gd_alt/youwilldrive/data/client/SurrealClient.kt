@@ -1,481 +1,298 @@
 package ru.gd_alt.youwilldrive.data.client
 
-import androidx.compose.runtime.State
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.java_websocket.client.WebSocketClient
 import org.java_websocket.handshake.ServerHandshake
 import ru.gd_alt.youwilldrive.data.cbor.SurrealCbor
-import ru.gd_alt.youwilldrive.data.models.*
+import ru.gd_alt.youwilldrive.data.models.* // Assuming your data models: geometry, bounds, RecordID, TableName, LiveQueryUpdate
 import java.net.URI
 import java.nio.ByteBuffer
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
-import kotlin.collections.get
 import org.java_websocket.drafts.Draft_6455
 import org.java_websocket.extensions.IExtension
 import org.java_websocket.protocols.IProtocol
 import org.java_websocket.protocols.Protocol
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import java.util.concurrent.atomic.AtomicBoolean
 
+data class LiveQueryUpdate(
+    val id: String, // The ID of the record that changed (e.g., "table:id")
+    val action: String, // The type of change (e.g., "CREATE", "UPDATE", "DELETE")
+    val result: Any? // The data associated with the change (e.g., the new/updated record, null for DELETE)
+)
 
+class ConnectionError(message: String, cause: Throwable? = null) : RuntimeException(message, cause)
+
+class SurrealDBException(val code: Int, message: String) : RuntimeException("SurrealDB Error $code: $message")
+
+// Helper types for live query callbacks
 private abstract class CallbackType<T>
 private class SuspendCallbackType : CallbackType<suspend (LiveQueryUpdate) -> Unit>()
 private class RegularCallbackType : CallbackType<(LiveQueryUpdate) -> Unit>()
 
-// Data class to represent a successful RPC response payload
+// Data classes for RPC responses
 data class RpcSuccessResponse(
     val id: Long,
     val result: Any?
 )
-
-// Data class to represent an error payload in an RPC response
 data class RpcErrorDetails(
     val code: Int,
     val message: String
 )
-
-// Data class to represent an erroneous RPC response payload
 data class RpcErrorResponse(
     val id: Long,
     val error: RpcErrorDetails
 )
 
-// Sealed class to represent the different types of messages received from SurrealDB
+// Sealed classes for incoming messages
 sealed class IncomingMessage {
-    // Standard RPC response that matches a sent request ID
     data class RpcResponse(val id: Long, val payload: RpcResponsePayload) : IncomingMessage()
-    // Live query update message (identified by null ID at top level)
-    data class LiveUpdate(val update: LiveQueryUpdate) : IncomingMessage() // Assuming LiveQueryUpdate is a data class in ru.gd_alt.youwilldrive.data.models
-    // Unhandled message structure
+    data class LiveUpdate(val update: LiveQueryUpdate) : IncomingMessage()
     data class Unknown(val payload: Any?) : IncomingMessage()
 }
 
-// Sealed class to represent the payload of a standard RPC response (either success or error)
 sealed class RpcResponsePayload {
     data class Success(val result: Any?) : RpcResponsePayload()
     data class Error(val error: RpcErrorDetails) : RpcResponsePayload()
 }
 
-enum class Status {
-    CONNECTED,
-    DISCONNECTED,
-    RECONNECTING,
-    CONNECTING,
-    READY,
-    FAILED
-}
+// Data class for live query updates
+// Assuming LiveQueryUpdate is defined in data.models or here if not
+// data class LiveQueryUpdate(val id: String, val action: String, val result: Any?)
 
 /**
- * SurrealDB asynchronous client implemented in Kotlin with Java-WebSocket and CBOR.
- * Uses Kotlin Coroutines for asynchronous operations.
+ * Asynchronous SurrealDB client with automatic reconnection support and on-connect callback.
+ * Uses Kotlin Coroutines and Java-WebSocket.
  */
-class SurrealDBClient(
-    endpoint: String,
+class SurrealDBClient private constructor(
+    private val uri: URI,
     private val user: String,
     private val password: String,
-    private val onConnectCallback: suspend (SurrealDBClient) -> Unit = {},
+    private val attemptReconnect: Boolean,
+    private val onConnectCallback: suspend (SurrealDBClient) -> Unit
 ) {
     private var webSocketClient: WebSocketClient? = null
-    private val nextId = AtomicLong(0) // Atomic counter for request IDs
-    // Map to hold CompletableDeferred for pending requests, keyed by request ID
+    private val nextId = AtomicLong(0)
     private val pendingRequests = ConcurrentHashMap<Long, CompletableDeferred<RpcResponsePayload>>()
-    // Map to hold live query callbacks, keyed by live query ID
-    // Pair<CallbackFunction, Boolean isAsync> - isAsync is ignored in this coroutine implementation
     private val liveQueries = ConcurrentHashMap<String, Triple<Any, Boolean, CallbackType<*>>>()
-    private val liveQueriesMutex = Mutex() // Mutex to protect access to liveQueries map
+    private val liveQueriesMutex = Mutex()
 
+    // Scope for handling messages; recreated on each connection
+    private var clientScope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    // Separate scope for scheduling reconnections
+    private val reconnectionScope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    private val protocols: List<IProtocol> = listOf(Protocol("cbor"))
+    private var connectionReadyDeferred: CompletableDeferred<Unit> = CompletableDeferred()
     private val logger = KotlinLogging.logger {}
 
-    // Coroutine scope tied to the client's lifecycle for handling background tasks like message receiving and callback dispatching
-    private val clientScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    /**
+     * Initialize or re-initialize the WebSocket client, perform signin, and invoke the on-connect callback.
+     */
+    private suspend fun initialize() {
+        // Reset state
+        connectionReadyDeferred = CompletableDeferred()
+        clientScope.cancel() // Cancel any previous message handlers
+        clientScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+        nextId.set(0)
+        pendingRequests.clear()
+        liveQueriesMutex.withLock { liveQueries.clear() }
 
-    // List of protocols supported by the WebSocket client
-    private val protocols: List<IProtocol> = mutableListOf<IProtocol>(Protocol("cbor"))
-
-    // Deferred to signal when the initial connection and signin are complete
-    private var connectionReadyDeferred = CompletableDeferred<Unit>()
-
-    // State of the connection
-    private val _connectionState = MutableStateFlow(Status.DISCONNECTED)
-    val connectionState: StateFlow<Status> = _connectionState
-    val attemptReconnect = AtomicBoolean(false)
-    val backoff = AtomicLong(0)
-
-    // Data to save between connections
-    val uri : URI
-    val draft = Draft_6455(emptyList<IExtension>(), protocols)
-
-    init {
-        // Validate endpoint format
-        if (!endpoint.startsWith("ws://") && !endpoint.startsWith("wss://")) {
-            throw IllegalArgumentException("Endpoint must start with ws:// or wss://.")
-        }
-
-        // Ensure endpoint ends with /rpc
-        uri = URI(if (endpoint.endsWith("/rpc")) endpoint else "$endpoint/rpc")
-        handleConnection()
-    }
-
-    fun handleConnection() {
-        // Initialize the WebSocket client with callbacks
-        webSocketClient = object : WebSocketClient(uri, draft) {
+        // Create WebSocket client instance
+        webSocketClient = object : WebSocketClient(uri, Draft_6455(emptyList<IExtension>(), protocols)) {
             override fun onOpen(handshakedata: ServerHandshake?) {
-                logger.info {"SurrealDB WebSocket connected: ${handshakedata?.httpStatus} - ${handshakedata?.httpStatusMessage}"}
-                _connectionState.value = Status.CONNECTED
-                // Perform signin immediately upon successful connection
+                logger.info { "SurrealDB WebSocket connected: ${handshakedata?.httpStatus} - ${handshakedata?.httpStatusMessage}" }
+                // Perform signin
                 clientScope.launch {
-                    if (backoff.get() < 30000L) {
-                        backoff.addAndGet(100L)
-                    }
                     val signinId = nextId.incrementAndGet()
-                    val signinRequest = RpcRequest(id = signinId, method = "signin", params = listOf(mapOf("user" to user, "pass" to password)))
+                    val signinRequest = RpcRequest(
+                        id = signinId,
+                        method = "signin",
+                        params = listOf(mapOf("user" to user, "pass" to password))
+                    )
                     val signinDeferred = CompletableDeferred<RpcResponsePayload>()
-                    pendingRequests[signinId] = signinDeferred // Add deferred for signin response
+                    pendingRequests[signinId] = signinDeferred
 
                     try {
-                        val cborMessage = SurrealCbor.cbor.encode(signinRequest)
-                        send(cborMessage) // Use the client's send method
-
-                        // Wait for the signin response
-                        when (val signInResult = signinDeferred.await()) { // Await ONLY the signin deferred
+                        send(SurrealCbor.cbor.encode(signinRequest))
+                        when (val result = signinDeferred.await()) {
                             is RpcResponsePayload.Success -> {
                                 logger.info { "SurrealDB signin successful" }
-                                connectionReadyDeferred.complete(Unit) // Signal that the client is ready for use
-                                // Call the onConnect callback
-                                try {
-                                    onConnectCallback(this@SurrealDBClient)
-                                } catch (e: Exception) {
-                                    logger.error { "Error in onConnect callback: ${e.message}" }
-                                    connectionReadyDeferred.completeExceptionally(e) // Signal failure
-                                    closeConnection(0, "") // Close the connection on error
-                                    _connectionState.value = Status.FAILED
-                                }
-                                _connectionState.value = Status.READY
-                                backoff.set(0L) // Reset backoff on successful signin
+                                connectionReadyDeferred.complete(Unit)
                             }
                             is RpcResponsePayload.Error -> {
-                                val error = signInResult.error
-                                val errorMessage = "SurrealDB signin failed: ${error.code} - ${error.message}"
-                                logger.error { errorMessage }
-                                connectionReadyDeferred.completeExceptionally(ConnectionError(errorMessage)) // Signal failure
-                                closeConnection(0, "") // Close the connection on authentication failure
-                                _connectionState.value = Status.FAILED
-                                delay(backoff.get())
+                                val err = result.error
+                                val msg = "SurrealDB signin failed: ${err.code} - ${err.message}"
+                                logger.error { msg }
+                                connectionReadyDeferred.completeExceptionally(ConnectionError(msg))
+                                closeConnection(0, "")
                             }
                         }
                     } catch (e: Exception) {
-                        val errorMessage = "Exception during SurrealDB signin or sending signin: ${e.message}"
-                        logger.error { errorMessage }
-                        // If the deferred wasn't completed by an error response, complete exceptionally here
+                        val msg = "Exception during signin: ${e.message}"
+                        logger.error { msg }
                         if (!signinDeferred.isCompleted) {
-                            signinDeferred.completeExceptionally(ConnectionError(errorMessage, e))
+                            signinDeferred.completeExceptionally(ConnectionError(msg, e))
                         }
-                        // Always complete the main connection deferred exceptionally if signin process failed
                         if (!connectionReadyDeferred.isCompleted) {
-                            connectionReadyDeferred.completeExceptionally(ConnectionError(errorMessage, e))
+                            connectionReadyDeferred.completeExceptionally(ConnectionError(msg, e))
                         }
-                        closeConnection(0, "") // Close on exception
-                        _connectionState.value = Status.FAILED
-                        delay(backoff.get())
+                        closeConnection(0, "")
                     } finally {
-                        pendingRequests.remove(signinId) // Clean up the signin deferred regardless of outcome
+                        pendingRequests.remove(signinId)
                     }
                 }
             }
 
             override fun onMessage(message: String?) {
-                // SurrealDB primarily uses CBOR for RPC, text messages are unexpected for standard RPC
                 logger.error { "Received unexpected text message: $message" }
             }
 
             override fun onMessage(bytes: ByteBuffer?) {
                 bytes?.let {
                     try {
-                        // Decode the incoming CBOR message using the provided library
-                        val decodedMessage: Any? = SurrealCbor.cbor.decode(it.array())
-                        handleIncomingMessage(decodedMessage) // Process the decoded message
+                        val decoded: Any? = SurrealCbor.cbor.decode(it.array())
+                        handleIncomingMessage(decoded)
                     } catch (e: Exception) {
-                        logger.error { "Error decoding incoming CBOR message: ${e.message}" }
+                        logger.error { "Error decoding CBOR: ${e.message}" }
                         e.printStackTrace()
-                        // Depending on error severity, might need to close connection
                     }
                 }
             }
 
             override fun onClose(code: Int, reason: String?, remote: Boolean) {
                 logger.info { "SurrealDB WebSocket closed: code=$code, reason='$reason', remote=$remote" }
-                val disconnectException = ConnectionError("WebSocket closed: $code - $reason")
-
-                // Complete any pending requests with an exception indicating connection loss
-                pendingRequests.forEach { (_, deferred) ->
-                    deferred.completeExceptionally(disconnectException)
-                }
+                val ex = ConnectionError("WebSocket closed: $code - $reason")
+                // Fail all pending requests
+                pendingRequests.forEach { (_, d) -> d.completeExceptionally(ex) }
                 pendingRequests.clear()
-
-                // If connection wasn't ready yet, complete the deferred exceptionally
                 if (!connectionReadyDeferred.isCompleted) {
-                    connectionReadyDeferred.completeExceptionally(disconnectException)
+                    connectionReadyDeferred.completeExceptionally(ex)
                 }
-
-                // Clear all live queries as the connection is broken
-                clientScope.launch {
-                    liveQueriesMutex.withLock {
-                        liveQueries.clear()
-                    }
-                }
-
-                // Cancel the client's coroutine scope
                 clientScope.cancel()
-                connectionReadyDeferred = CompletableDeferred<Unit>() // Reset the deferred for next connection attempt
+                // Clear live queries
+                runBlocking { liveQueriesMutex.withLock { liveQueries.clear() } }
 
-                if (attemptReconnect.get()) {
-                    logger.info { "Attempting to reconnect..." }
-                    _connectionState.value = Status.RECONNECTING
-                    handleConnection()
-                } else {
-                    _connectionState.value = Status.DISCONNECTED
+                // Attempt reconnection if enabled
+                if (attemptReconnect) {
+                    reconnectionScope.launch {
+                        delay(1000) // Wait 1s before reconnect
+                        try {
+                            initialize()
+                        } catch (e: Exception) {
+                            logger.error { "Reconnection failed: ${e.message}" }
+                        }
+                    }
                 }
             }
 
             override fun onError(ex: Exception?) {
                 logger.error { "SurrealDB WebSocket error: ${ex?.message}" }
                 ex?.printStackTrace()
-
-                // Complete any pending requests and connection deferred with the error
-                val error = ConnectionError("WebSocket error", ex)
-                pendingRequests.forEach { (_, deferred) ->
-                    deferred.completeExceptionally(error)
-                }
+                val err = ConnectionError("WebSocket error", ex)
+                pendingRequests.forEach { (_, d) -> d.completeExceptionally(err) }
                 if (!connectionReadyDeferred.isCompleted) {
-                    connectionReadyDeferred.completeExceptionally(error)
+                    connectionReadyDeferred.completeExceptionally(err)
                 }
-
-                if (attemptReconnect.get()) {
-                    logger.info { "Attempting to reconnect..." }
-                    _connectionState.value = Status.RECONNECTING
-                    handleConnection()
-                } else {
-                    _connectionState.value = Status.DISCONNECTED
-                }
+                // onClose will handle reconnection
             }
         }
 
-        // Start the WebSocket connection attempt
-        try {
-            // connectBlocking() will block until the connection is established or fails.
-            // This aligns better with the constructor finishing only when the connection state is determined.
-            // Sign-in is handled async in onOpen.
+        // Connect and await sign-in
+        withContext(Dispatchers.IO) {
             webSocketClient?.connectBlocking()
-            _connectionState.value = Status.CONNECTING
-        } catch (e: Exception) {
-            val message = "Failed to establish SurrealDB WebSocket connection"
-            logger.error { "$message: ${e.message}" }
-            // If connectBlocking fails, the connectionReadyDeferred is completed exceptionally here
-            if (!connectionReadyDeferred.isCompleted) {
-                connectionReadyDeferred.completeExceptionally(ConnectionError(message, e))
-                _connectionState.value = Status.FAILED
-            }
-            // Re-throw the exception from the constructor as connection failed
-            throw ConnectionError(message, e)
         }
+        connectionReadyDeferred.await()
+        // Invoke user callback after successful (re)connection and sign-in
+        onConnectCallback(this@SurrealDBClient)
     }
 
-    /**
-     * Handles incoming decoded messages from the WebSocket.
-     * Distinguishes between standard RPC responses and live query updates.
-     */
-    private fun handleIncomingMessage(decodedMessage: Any?) {
-        // Based on SurrealDB RPC protocol over WebSocket:
-        // Standard response: { "id": <id>, "result": <result> } OR { "id": <id>, "error": <error> }
-        // Live update: { "id": null, "result": { "id": <query_id>, "action": <action>, "result": <data> } }
-
-        if (decodedMessage is Map<*, *>) {
-            val id = decodedMessage["id"]
-            val result = decodedMessage["result"]
-            val error = decodedMessage["error"]
+    /** Handle incoming CBOR-decoded messages. */
+    private fun handleIncomingMessage(decoded: Any?) {
+        if (decoded is Map<*, *>) {
+            val id = decoded["id"]
+            val result = decoded["result"]
+            val error = decoded["error"]
 
             when {
-                // Case 1: Standard RPC response with a non-null ID
                 id != null && id is Number -> {
-                    val messageId = id.toLong() // Convert to Long
-                    val deferred = pendingRequests.remove(messageId) // Get and remove the pending deferred
-
+                    val mid = id.toLong()
+                    val deferred = pendingRequests.remove(mid)
                     if (deferred != null) {
                         when {
-                            error == null -> {
-                                // Success response
-                                deferred.complete(RpcResponsePayload.Success(result))
-                            }
+                            error == null -> deferred.complete(RpcResponsePayload.Success(result))
                             error is Map<*, *> -> {
-                                // Error response
-                                try {
-                                    val errorCode = (error["code"] as? Number)?.toInt() ?: -1
-                                    val errorMessage = error["message"] as? String ?: "Unknown error"
-                                    deferred.complete(RpcResponsePayload.Error(RpcErrorDetails(errorCode, errorMessage)))
-                                } catch (e: Exception) {
-                                    logger.error { "Error parsing RPC error response for id $messageId: ${e.message}" }
-                                    deferred.completeExceptionally(RuntimeException("Error parsing RPC error response", e))
-                                }
+                                val code = (error["code"] as? Number)?.toInt() ?: -1
+                                val msg = error["message"] as? String ?: "Unknown"
+                                deferred.complete(RpcResponsePayload.Error(RpcErrorDetails(code, msg)))
                             }
-                            else -> {
-                                // Unexpected response structure for a known ID
-                                logger.error { "Received unexpected RPC response structure for id $messageId: $decodedMessage" }
-                                deferred.completeExceptionally(RuntimeException("Received unexpected RPC response structure: $decodedMessage"))
+                            else -> deferred.completeExceptionally(RuntimeException("Unexpected response: $decoded"))
+                        }
+                    } else {
+                        logger.error { "Unknown request id: $mid" }
+                    }
+                }
+                id == null && result is Map<*, *> -> {
+                    val qid = result["id"] as? String
+                    val action = result["action"] as? String
+                    val data = result["result"]
+                    if (qid != null && action != null) {
+                        val update = LiveQueryUpdate(qid, action, data)
+                        clientScope.launch {
+                            liveQueriesMutex.withLock {
+                                val (cb, _, cbType) = liveQueries[qid] ?: return@withLock
+                                try {
+                                    when (cbType) {
+                                        is SuspendCallbackType -> (cb as suspend (LiveQueryUpdate) -> Unit).invoke(update)
+                                        is RegularCallbackType -> (cb as (LiveQueryUpdate) -> Unit).invoke(update)
+                                    }
+                                } catch (e: Exception) {
+                                    logger.error { "Callback error: ${e.message}" }
+                                }
                             }
                         }
                     } else {
-                        // Response for an unknown or already handled request ID
-                        logger.error { "Received response for unknown request id: $messageId" }
+                        logger.error { "Unexpected live update structure: $decoded" }
                     }
                 }
-                // Case 2: Live query update message (null ID at the top level)
-                id == null && result is Map<*, *> -> {
-                    try {
-                        // Parse the inner structure of the live update
-                        val liveQueryId = result["id"] as? String // The actual live query ID string
-                        val liveUpdateAction = result["action"] as? String
-                        val liveUpdateResultData = result["result"] // The data payload of the update
-
-                        if (liveQueryId != null && liveUpdateAction != null) {
-                            // Create the LiveQueryUpdate data class instance
-                            val liveQueryUpdate = LiveQueryUpdate(liveQueryId, liveUpdateAction, liveUpdateResultData)
-
-                            // Dispatch the update to the appropriate callback asynchronously
-                            clientScope.launch {
-                                liveQueriesMutex.withLock {
-                                    val (callback, _, callbackType) = liveQueries[liveQueryId] ?: return@withLock
-
-                                    try {
-                                        when (callbackType) {
-                                            is SuspendCallbackType -> {
-                                                // Cast und Aufruf der Suspend-Funktion
-                                                @Suppress("UNCHECKED_CAST")
-                                                val suspendCallback = callback as suspend (LiveQueryUpdate) -> Unit
-                                                suspendCallback(liveQueryUpdate)
-                                            }
-                                            is RegularCallbackType -> {
-                                                // Cast und Aufruf der regulären Funktion
-                                                @Suppress("UNCHECKED_CAST")
-                                                val regularCallback = callback as (LiveQueryUpdate) -> Unit
-                                                regularCallback(liveQueryUpdate)
-                                            }
-                                        }
-                                    } catch (e: Exception) {
-                                        logger.error { "Error executing callback for live query $liveQueryId: ${e.message}" }
-                                        e.printStackTrace()
-                                    }
-                                }
-                            }
-                        } else {
-                            // Null ID message with unexpected structure within 'result'
-                            logger.error { "Received null-id message with unexpected 'result' structure: $decodedMessage" }
-                        }
-
-                    } catch (e: Exception) {
-                        // Error processing the live query update structure
-                        logger.error { "Error processing live query update message: ${e.message}" }
-                        e.printStackTrace()
-                    }
-                }
-                // Case 3: Any other unhandled message structure
-                else -> {
-                    logger.info { "Received unhandled message structure: $decodedMessage" }
-                }
+                else -> logger.info { "Unhandled message: $decoded" }
             }
         } else {
-            // Received a message that wasn't a Map
-            logger.error { "Received unexpected non-map message: $decodedMessage" }
+            logger.error { "Non-map message: $decoded" }
         }
     }
 
-    /**
-     * Sends an RPC request message to SurrealDB and awaits the response.
-     * This is the core internal method for all RPC calls.
-     *
-     * @param method The SurrealDB RPC method name (e.g., "signin", "use", "query").
-     * @param params The parameters for the method, as a list.
-     * @return The parsed result payload from the server response.
-     * @throws ConnectionError if the client is not connected or connection is lost.
-     * @throws RuntimeException if sending fails or an unexpected response is received.
-     */
+    // Core RPC sending
     private suspend fun sendRpcInternal(method: String, params: List<Any?> = emptyList()): RpcResponsePayload {
-        // Ensure connection is open and signin is complete before sending
         ensureConnectedAndReady()
-
-        val currentId = nextId.incrementAndGet() // Generate a new unique ID for the request
-        val request = RpcRequest(id = currentId, method = method, params = params)
-
-        // Create a deferred result for this request ID
+        val id = nextId.incrementAndGet()
+        val req = RpcRequest(id, method, params)
         val deferred = CompletableDeferred<RpcResponsePayload>()
-        pendingRequests[currentId] = deferred // Store the deferred result
-
+        pendingRequests[id] = deferred
         try {
-            // Encode the request to CBOR and send it over the WebSocket
-            val cborMessage = SurrealCbor.cbor.encode(request)
-            webSocketClient?.send(cborMessage)
+            webSocketClient?.send(SurrealCbor.cbor.encode(req))
         } catch (e: Exception) {
-            // If sending fails, remove the pending request and complete the deferred exceptionally
-            pendingRequests.remove(currentId)
-            val sendError = RuntimeException("Failed to send RPC message for method '$method'", e)
-            deferred.completeExceptionally(sendError)
-            throw sendError // Re-throw the exception
+            pendingRequests.remove(id)
+            val err = RuntimeException("Failed to send '$method'", e)
+            deferred.completeExceptionally(err)
+            throw err
         }
-
-        // Await the completion of the deferred result (handled by handleIncomingMessage)
         return deferred.await()
     }
 
-    /**
-     * Suspends until the WebSocket connection is open and the initial signin is complete.
-     * @throws ConnectionError if connection or signin fails.
-     */
     private suspend fun ensureConnectedAndReady() {
-        // Await the completion of the connectionReadyDeferred.
-        // If connection or signin failed, await() will throw the exception it was completed with.
         connectionReadyDeferred.await()
-
-        // Additional check to ensure the client is still considered open and not closing
-        if (webSocketClient?.isOpen != true) {
-            throw ConnectionError("WebSocket is not open.")
-        }
+        if (webSocketClient?.isOpen != true) throw ConnectionError("WebSocket not open")
     }
 
-    /**
-     * Sends an RPC request and processes the result, throwing a structured exception on error.
-     * This is the method called by the public API functions.
-     *
-     * @param method The SurrealDB RPC method name.
-     * @param params The parameters for the method.
-     * @return The result payload from the server on success.
-     * @throws SurrealDBException if SurrealDB returns an error code in the response.
-     * @throws ConnectionError if the connection fails before or during the request.
-     * @throws RuntimeException for other client-side errors (e.g., sending/decoding).
-     */
     private suspend fun sendRpc(method: String, params: List<Any?> = emptyList()): Any? {
-        val responsePayload = sendRpcInternal(method, params)
-        return when (responsePayload) {
-            is RpcResponsePayload.Success -> responsePayload.result
-            is RpcResponsePayload.Error -> {
-                // Throw a specific exception for SurrealDB server errors
-                throw SurrealDBException(responsePayload.error.code, responsePayload.error.message)
-            }
+        return when (val payload = sendRpcInternal(method, params)) {
+            is RpcResponsePayload.Success -> payload.result
+            is RpcResponsePayload.Error -> throw SurrealDBException(payload.error.code, payload.error.message)
         }
     }
-
-    /**
-     * Represents an error returned by the SurrealDB server in an RPC response.
-     */
-    class SurrealDBException(val code: Int, message: String) : RuntimeException("SurrealDB Error $code: $message")
-
-    /**
-     * Represents a connection or client-side error during communication.
-     */
-    class ConnectionError(message: String, cause: Throwable? = null) : RuntimeException(message, cause)
 
     /**
      * Assign namespace and database.
@@ -770,92 +587,68 @@ class SurrealDBClient(
     }
 
     /**
-     * Closes the WebSocket connection and cleans up all associated resources,
-     * including cancelling pending requests and the client's CoroutineScope.
-     * This should be called when the application is shutting down or the client is no longer needed.
+     * Gracefully close the client and all resources.
      */
     fun close() {
         logger.info { "Closing SurrealDB client..." }
-        // Cancel the CoroutineScope, which will cancel all coroutines launched within it
         clientScope.cancel()
-        attemptReconnect.set(false)
-
-        // Close the WebSocket connection gracefully
-        webSocketClient?.let {
-            if (!it.isClosing && !it.isClosed) {
-                try {
-                    it.close() // Initiate graceful closing
-                } catch (e: Exception) {
-                    logger.error { "Error closing WebSocket: ${e.message}" }
-                }
-            }
-        }
-
-        // Clean up internal state
+        webSocketClient?.takeIf { !it.isClosing && !it.isClosed }?.close()
         webSocketClient = null
         pendingRequests.clear()
-        // Live queries map will be cleared by onClose callback or scope cancellation effect
-        logger.info { "SurrealDB client closed." }
+        logger.info { "Client closed." }
     }
 
-    // It's good practice to provide a way to close explicitly.
-    // While finalize can be a fallback, relying on it is not recommended.
-    // protected fun finalize() {
-    //     close()
-    // }
-
-    /**
-     * Companion object for static factory methods.
-     */
     companion object {
         /**
-         * Create SurrealDB client from environment variables.
-         * Required variables: SURREAL_ENDPOINT, SURREAL_USER, SURREAL_PASSWORD, SURREAL_NS, SURREAL_DB.
-         *
-         * @return SurrealDB client instance.
-         * @throws IllegalArgumentException if environment variables are missing or endpoint is invalid.
-         * @throws ConnectionError if connection or signin fails.
+         * Factory to create a new client instance with optional reconnection and callback.
          */
-        suspend fun fromEnv(): SurrealDBClient {
-            val endpoint = System.getenv("SURREAL_ENDPOINT") ?: throw IllegalArgumentException("SURREAL_ENDPOINT environment variable not set.")
-            val user = System.getenv("SURREAL_USER") ?: throw IllegalArgumentException("SURREAL_USER environment variable not set.")
-            val password = System.getenv("SURREAL_PASSWORD") ?: throw IllegalArgumentException("SURREAL_PASSWORD environment variable not set.")
-            val ns = System.getenv("SURREAL_NS") ?: throw IllegalArgumentException("SURREAL_NS environment variable not set.")
-            val db = System.getenv("SURREAL_DB") ?: throw IllegalArgumentException("SURREAL_DB environment variable not set.")
+        suspend fun create(
+            endpoint: String,
+            user: String,
+            password: String,
+            attemptReconnect: Boolean = false,
+            onConnectCallback: suspend (SurrealDBClient) -> Unit = {}
+        ): SurrealDBClient {
+            if (!endpoint.startsWith("ws://") && !endpoint.startsWith("wss://")) {
+                throw IllegalArgumentException("Endpoint must start with ws:// or wss://")
+            }
+            val uri = URI(if (endpoint.endsWith("/rpc")) endpoint else "${endpoint.removeSuffix("/")}/rpc")
+            val client = SurrealDBClient(uri, user, password, attemptReconnect, onConnectCallback)
+            client.initialize()
+            return client
+        }
 
-            val client = SurrealDBClient(endpoint, user, password)
-            // Wait for initial connection and signin before using
-            client.ensureConnectedAndReady() // This will throw if connection/signin failed
-            client.use(ns, db) // Set namespace and database
+        /**
+         * Create client from environment variables and set namespace/db.
+         */
+        suspend fun fromEnv(
+            attemptReconnect: Boolean = false,
+            onConnectCallback: suspend (SurrealDBClient) -> Unit = {}
+        ): SurrealDBClient {
+            val endpoint = System.getenv("SURREAL_ENDPOINT") ?: error("SURREAL_ENDPOINT not set")
+            val user = System.getenv("SURREAL_USER") ?: error("SURREAL_USER not set")
+            val password = System.getenv("SURREAL_PASSWORD") ?: error("SURREAL_PASSWORD not set")
+            val ns = System.getenv("SURREAL_NS") ?: error("SURREAL_NS not set")
+            val db = System.getenv("SURREAL_DB") ?: error("SURREAL_DB not set")
+            val client = create(endpoint, user, password, attemptReconnect, onConnectCallback)
+            client.use(ns, db)
             return client
         }
     }
 }
 
-// Add this data class definition if it's not already present in ru.gd_alt.youwilldrive.data.models
-// This structure is based on the expected payload for a live query update from SurrealDB
-
-data class LiveQueryUpdate(
-    val id: String, // The ID of the record that changed (e.g., "table:id")
-    val action: String, // The type of change (e.g., "CREATE", "UPDATE", "DELETE")
-    val result: Any? // The data associated with the change (e.g., the new/updated record, null for DELETE)
-)
-
-
 fun main() {
-    // Example usage of the SurrealDBClient
     runBlocking {
         try {
-            val client = SurrealDBClient(
+            val client = SurrealDBClient.create(
                 "ws://87.242.117.89:5457/rpc",
                 "root",
-                "iwilldrive"
-            ) { client ->
-                // This is the onConnect callback
-                println("Connected to SurrealDB ${client.version()}")
-                client.use("main", "main")
+                "iwilldrive",
+                attemptReconnect = true
+            ) { cli ->
+                println("Connected (or reconnected) to SurrealDB: ${cli.version()}")
             }
-            println("Connected to SurrealDB successfully!")
+            println("Initial version: ${client.version()}")
             client.close()
         } catch (e: Exception) {
             println("Error: ${e.message}")

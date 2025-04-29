@@ -23,10 +23,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.datetime.toJavaLocalDateTime
+import ru.gd_alt.youwilldrive.data.DataStoreManager
 import ru.gd_alt.youwilldrive.models.Event
 import ru.gd_alt.youwilldrive.models.Placeholders.DefaultUser
 import ru.gd_alt.youwilldrive.models.User
@@ -37,8 +39,6 @@ import java.time.LocalDate
 
 @Composable
 fun CalendarScreen(
-    userId: String,
-    viewModel: CalendarViewModel = viewModel()
 ) {
     val scope = rememberCoroutineScope()
     var currentMonth by remember { mutableIntStateOf(LocalDate.now().monthValue) }
@@ -46,13 +46,19 @@ fun CalendarScreen(
     var selectedDay by remember { mutableStateOf<Int?>(null) }
     var events: List<Event>? by remember { mutableStateOf(null) }
 
-    LaunchedEffect(scope) {
-        val user = (User.fromId(userId) ?: DefaultUser)
-        Log.d("ProfileScreen", user.id)
-        viewModel.fetchEvents(userId) { data, _ ->
-            events = data
-        }
+    val context = LocalContext.current.applicationContext
+    val dataStoreManager = remember { DataStoreManager(context) }
+    val factory = remember(dataStoreManager) {
+        CalendarViewModelFactory(dataStoreManager)
     }
+
+    val viewModel: CalendarViewModel = viewModel(factory = factory)
+    val fetchState by viewModel.calendarState.collectAsState()
+
+    LaunchedEffect(scope) {
+        viewModel.fetchEvents()
+    }
+    events = viewModel.events.collectAsState().value
 
     // Filter events for the selected date
     val displayedEvents = remember(selectedDay, currentMonth, currentYear, events) {
@@ -126,5 +132,5 @@ fun CalendarScreen(
 @Preview(showBackground = true)
 @Composable
 fun CalendarEventSystemPreview() {
-    CalendarScreen(DefaultUser.id)
+    CalendarScreen()
 }

@@ -8,38 +8,51 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import kotlinx.serialization.Serializable
 import ru.gd_alt.youwilldrive.R
 
-data class Route(
-    val route: Any,
-    val titleId: Int,
-    val imageVector: ImageVector? = null
-) {
-    fun isTopLevel(): Boolean {
-        return imageVector != null
+@Serializable
+sealed class Route {
+    abstract val titleId: Int
+    open val iconKey: String? = null
+
+    fun isTopLevel(): Boolean = iconKey != null
+
+    open val imageVector: ImageVector?
+        get() = getIcon(iconKey)
+
+    @Serializable
+    object Login : Route() {
+        override val titleId: Int = R.string.login
     }
-}
 
+    @Serializable
+    object Calendar : Route() {
+        override val titleId: Int = R.string.calendar
+        override val iconKey: String = "calendar"
+    }
 
-@Serializable
-object LoginRoute
-@Serializable
-object CalendarRoute
-@Serializable
-object ProfileRoute
-@Serializable
-object NotificationsRoute
+    @Serializable
+    object Profile : Route() {
+        override val titleId: Int = R.string.profile
+        override val iconKey: String = "person"
+    }
 
-val NavRoutes = listOf(
-    Route(LoginRoute, R.string.login),
-    Route(CalendarRoute, R.string.calendar, Icons.Default.CalendarMonth),
-    Route(ProfileRoute, R.string.profile, Icons.Default.Person),
-    Route(NotificationsRoute, R.string.notifications, Icons.Default.Notifications),
-)
+    @Serializable
+    object Notifications : Route() {
+        override val titleId: Int = R.string.notifications
+        override val iconKey: String = "notifications"
+    }
 
-fun navRouteByRoute(route: Any): Route? {
-    for (r in NavRoutes) {
-        if (r.route::class.qualifiedName == route) {
-            return r
+    companion object {
+        fun getIcon(iconKey: String?): ImageVector? {
+            return when (iconKey) {
+                "calendar" -> Icons.Default.CalendarMonth
+                "person" -> Icons.Default.Person
+                "notifications" -> Icons.Default.Notifications
+                else -> null
+            }
         }
+
+        val topLevelRoutes: List<Route> = listOf(
+            Calendar, Profile, Notifications
+        )
     }
-    return null
 }

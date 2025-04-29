@@ -8,32 +8,57 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import ru.gd_alt.youwilldrive.data.DataStoreManager
 import ru.gd_alt.youwilldrive.models.Event
 import ru.gd_alt.youwilldrive.models.User
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.SharingStarted
 
 sealed class CalendarState {
     data object Idle : CalendarState()
     data object Loading : CalendarState()
+    data class Error(val message: String) : CalendarState()
 }
 
-class CalendarViewModel : ViewModel() {
-    private val _calendarState = MutableStateFlow<CalendarState>(CalendarState.Loading)
+class CalendarViewModel(
+    dataStoreManager: DataStoreManager
+) : ViewModel() {
+    private val _calendarState = MutableStateFlow<CalendarState>(CalendarState.Idle)
     val calendarState = _calendarState.asStateFlow()
 
-    fun fetchEvents(userId: String, onResponse: (List<Event>?, String?) -> Unit) {
+    private val _events = MutableStateFlow<List<Event>?>(null)
+    val events: StateFlow<List<Event>?> = _events.asStateFlow()
+
+    private val userId: StateFlow<String?> = dataStoreManager.getUserId()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
+
+    fun fetchEvents() {
+        _calendarState.value = CalendarState.Loading
+        var events: List<Event>? = null
+        var error: String? = null
+        val currentUserId = userId.value
+
+        if (currentUserId == null) {
+            error = "User ID is null"
+            _calendarState.value = CalendarState.Error(error)
+            return
+        }
+
         viewModelScope.launch(Dispatchers.IO) {
-            _calendarState.value = CalendarState.Loading
-            var events: List<Event>? = null
-            var error: String? = null
             try {
-                val user: User? = User.fromId(userId)
+                val user: User? = User.fromId(userId.value.toString())
                 events = (user?.isCadet() ?: user?.isInstructor())?.events() ?: listOf()
                 Log.d("fetchEvent", "Loaded events: $events")
             } catch (e: Exception) {
                 error = e.message
             }
             withContext(Dispatchers.Main) {
-                onResponse(events, error)
+                _events.value = events
                 _calendarState.value = CalendarState.Idle
             }
         }

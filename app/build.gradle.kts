@@ -58,6 +58,7 @@ dependencies {
     implementation("com.appmattus.crypto:cryptohash:1.0.2")
     implementation("org.java-websocket:Java-WebSocket:1.6.0")
     implementation("io.github.oshai:kotlin-logging-jvm:7.0.3")
+    implementation(libs.androidx.datastore.preferences)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

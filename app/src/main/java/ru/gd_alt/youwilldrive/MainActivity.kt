@@ -6,67 +6,127 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.launch
+import ru.gd_alt.youwilldrive.data.DataStoreManager
 import ru.gd_alt.youwilldrive.ui.components.BottomNavBar
-import ru.gd_alt.youwilldrive.ui.navigation.LoginRoute
-import ru.gd_alt.youwilldrive.ui.navigation.NavRoutes
 import ru.gd_alt.youwilldrive.ui.navigation.NavigationGraph
-import ru.gd_alt.youwilldrive.ui.navigation.navRouteByRoute
+import ru.gd_alt.youwilldrive.ui.navigation.Route
 import ru.gd_alt.youwilldrive.ui.theme.YouWillDriveTheme
+
+fun findRoute(routeId: Any?): Route? {
+    val routeString = routeId as? String ?: return null
+
+    return when (routeString) {
+        // Assuming NavHost uses qualified names for objects by default with type-safe nav
+        Route.Login::class.qualifiedName -> Route.Login
+        Route.Calendar::class.qualifiedName -> Route.Calendar
+        Route.Profile::class.qualifiedName -> Route.Profile
+        Route.Notifications::class.qualifiedName -> Route.Notifications
+        else -> {
+            Log.w("MainActivity", "Could not find Route object for routeId: $routeString")
+            Route.Login
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
     @SuppressLint("RestrictedApi", "DiscouragedApi")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // val client = SupabaseClient.client
         enableEdgeToEdge()
         setContent {
+            val dataStoreManager = DataStoreManager(this)
             val navController = rememberNavController()
-            val currentBackStackEntry by navController.currentBackStackEntryAsState()
-            val currentRoute by remember { derivedStateOf { currentBackStackEntry?.destination?.route ?: ".LoginRoute" } }
-            MaterialTheme {
-                Scaffold(
-                    topBar = topBar@{
-                        if (navRouteByRoute(currentRoute) == NavRoutes[0]) return@topBar
-                        TopAppBar(
-                            title = {
-                                Text(
-                                    stringResource((navRouteByRoute(currentRoute) ?: NavRoutes[0]).titleId),
-                                    fontWeight = FontWeight.Bold)
-                            },
-                            modifier = Modifier.clip(RoundedCornerShape(0.dp, 0.dp, 20.dp, 20.dp)),
-                            colors = topAppBarColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                titleContentColor = MaterialTheme.colorScheme.primary,
-                            )
-                        )
-                    },
-                    bottomBar = {
-                        BottomNavBar(
-                            navController = navController
-                        )
-                    }
-                ) {
-                    NavigationGraph(Modifier.padding(it), navController)
+            val userIdState = remember(dataStoreManager) {
+                dataStoreManager.getUserId()
+            }.collectAsState(initial = null)
+
+            val (startDestination, isLoading) = remember(userIdState.value) {
+                when (userIdState.value) {
+                    null -> Route.Login to false // null means logged out
+                    "" -> Route.Login to false   // empty string as logged out explicitly if needed
+                    else -> Route.Profile to false // logged in
                 }
+            }
+
+            val currentBackStackEntry by navController.currentBackStackEntryAsState()
+
+            val currentRouteObject: Route? = remember(currentBackStackEntry) {
+                // This relies on NavigationGraph using type-safe navigation
+                // and the nav library correctly associating the Route object.
+                currentBackStackEntry?.destination?.route?.let { routeId ->
+                    findRoute(routeId)
+                }
+            }
+
+            MaterialTheme {
+                if (isLoading) {
+                    // Show a loading indicator while checking login state
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                }
+                else {
+                    Scaffold(
+                        topBar = topBar@{
+                            if (currentRouteObject != null && currentRouteObject !is Route.Login) {
+                                TopAppBar(
+                                    title = {
+                                        Text(
+                                            stringResource(currentRouteObject.titleId),
+                                            fontWeight = FontWeight.Bold)
+                                    },
+                                    modifier = Modifier.clip(RoundedCornerShape(0.dp, 0.dp, 20.dp, 20.dp)),
+                                    colors = topAppBarColors(
+                                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        titleContentColor = MaterialTheme.colorScheme.primary,
+                                    )
+                                )
+                            }
+                        },
+                        bottomBar = {
+                            if (currentRouteObject?.isTopLevel() == true) {
+                                BottomNavBar(
+                                    navController = navController,
+                                    topLevelRoutes = Route.topLevelRoutes,
+                                    currentRoute = currentRouteObject,
+                                )
+                            }
+                        }
+                    ) { innerPadding ->
+                        NavigationGraph(Modifier.padding(innerPadding), navController, startDestination, dataStoreManager)
+                    }
+                    }
             }
         }
     }

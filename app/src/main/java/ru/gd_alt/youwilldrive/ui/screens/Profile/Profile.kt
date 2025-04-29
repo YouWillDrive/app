@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -44,33 +45,36 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import ru.gd_alt.youwilldrive.data.DataStoreManager
 import ru.gd_alt.youwilldrive.models.Cadet
 import ru.gd_alt.youwilldrive.models.Instructor
 import ru.gd_alt.youwilldrive.models.Participant
 import ru.gd_alt.youwilldrive.models.Placeholders.DefaultUser
 import ru.gd_alt.youwilldrive.models.User
 import ru.gd_alt.youwilldrive.ui.screens.CadetInfo.CadetInfo
+import ru.gd_alt.youwilldrive.ui.screens.Calendar.CalendarViewModelFactory
+import ru.gd_alt.youwilldrive.ui.screens.Calendar.ProfileViewModelFactory
 import ru.gd_alt.youwilldrive.ui.screens.InstructorInfo.InstructorInfo
 
 @Composable
-fun ProfileScreen(
-    userId: String,
-    viewModel: ProfileViewModel = viewModel()
-) {
+fun ProfileScreen() {
     val scope = rememberCoroutineScope()
-    var user: User? by remember { mutableStateOf(null) }
     var userData: Participant? by remember { mutableStateOf(null) }
+    var user: User? by remember { mutableStateOf(null) }
+
+    val context = LocalContext.current.applicationContext
+    val dataStoreManager = remember { DataStoreManager(context) }
+    val factory = remember(dataStoreManager) {
+        ProfileViewModelFactory(dataStoreManager)
+    }
+
+    val viewModel: ProfileViewModel = viewModel(factory = factory)
 
     LaunchedEffect(scope) {
-        withContext(Dispatchers.IO) {
-            user = (User.fromId(userId) ?: DefaultUser)
-        }
-        Log.d("ProfileScreen", "${user?.id}")
-        viewModel.fetchData(userId) { data, error ->
-            Log.d("ProfileScreen", "Data: $data\nError: $error")
-            userData = data
-        }
+        viewModel.fetchData()
     }
+    userData = viewModel.userDataState.collectAsState().value
+    user = viewModel.userState.collectAsState().value
 
     Column(
         Modifier
@@ -90,7 +94,8 @@ fun ProfileScreen(
                 LoadingCard()
             }
         else {
-            Log.d("ProfileScreen", "Loaded userData. ${userData}")
+            Log.d("ProfileScreen", "Loaded userData. $userData")
+
             when (userData) {
                 is Cadet -> {
                     CadetInfo(userData as Cadet)

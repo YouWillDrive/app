@@ -10,35 +10,42 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import ru.gd_alt.youwilldrive.data.DataStoreManager
 import ru.gd_alt.youwilldrive.ui.screens.Calendar.CalendarScreen
 import ru.gd_alt.youwilldrive.ui.screens.Login.LoginScreen
 import ru.gd_alt.youwilldrive.ui.screens.Notifications.NotificationsScreen
 import ru.gd_alt.youwilldrive.ui.screens.Profile.ProfileScreen
 
 @Composable
-fun NavigationGraph(modifier: Modifier = Modifier, navController: NavHostController = rememberNavController()) {
-    var userId by remember { mutableStateOf("") }
+fun NavigationGraph(
+    modifier: Modifier = Modifier,
+    navController: NavHostController,
+    startDestination: Route,
+    dataStoreManager: DataStoreManager
+) {
     NavHost(
         modifier = modifier,
         navController = navController,
-        startDestination = LoginRoute
+        startDestination = startDestination
     ) {
-        composable<LoginRoute> {
-            LoginScreen(navController = navController) {
-                userId = it
-            }
+        composable<Route.Login> {
+            LoginScreen(navController = navController, onSuccessfulLogin = { userId ->
+                navController.navigate(Route.Calendar) {
+                    popUpTo(Route.Login) { inclusive = true }
+                }
+            })
         }
 
-        composable<CalendarRoute> {
-            CalendarScreen(userId)
+        composable<Route.Calendar> {
+            CalendarScreen()
         }
 
-        composable<NotificationsRoute> {
+        composable<Route.Notifications> {
             NotificationsScreen()
         }
 
-        composable<ProfileRoute> {
-            ProfileScreen(userId)
+        composable<Route.Profile> {
+            ProfileScreen()
         }
     }
 }

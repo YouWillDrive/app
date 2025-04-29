@@ -1,13 +1,27 @@
 package ru.gd_alt.youwilldrive.data.client
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.util.Log
 import kotlinx.coroutines.runBlocking
 import java.nio.charset.Charset
 
 object Connection {
-    val cl = SurrealDBClient("ws://87.242.117.89:5457/rpc", "root", "iwilldrive")
+    val notificationChannel: NotificationChannel = NotificationChannel(
+        "main",
+        "Main",
+        NotificationManager.IMPORTANCE_DEFAULT
+    ).apply {
+        description = "Main channel"
+    }
 
-    init {
-        runBlocking {
+    val cl = runBlocking {
+        return@runBlocking SurrealDBClient.create(
+            "ws://87.242.117.89:5457/rpc",
+            "root",
+            "iwilldrive",
+            true
+        ) { cl ->
             cl.use("main", "main")
         }
     }

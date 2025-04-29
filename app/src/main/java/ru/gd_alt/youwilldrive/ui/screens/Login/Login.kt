@@ -39,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -48,16 +49,22 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import kotlinx.coroutines.launch
 import ru.gd_alt.youwilldrive.R
-import ru.gd_alt.youwilldrive.ui.navigation.ProfileRoute
+import ru.gd_alt.youwilldrive.data.DataStoreManager
+import ru.gd_alt.youwilldrive.ui.navigation.Route
 
 @Composable
 fun LoginScreen(navController: NavController? = null, viewModel: LoginViewModel = viewModel(), onSuccessfulLogin: (userId: String) -> Unit) {
     var phoneNumber by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val dataStoreManager = DataStoreManager(context)
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -162,7 +169,10 @@ fun LoginScreen(navController: NavController? = null, viewModel: LoginViewModel 
                             viewModel.login(phoneNumber, password) { user, error ->
                                 if (user != null) {
                                     onSuccessfulLogin(user.id)
-                                    navController?.navigate(ProfileRoute)
+                                    (context as? LifecycleOwner)?.lifecycleScope?.launch {
+                                        dataStoreManager.saveUserId(user.id)
+                                        navController?.navigate(Route.Profile)
+                                    }
                                 }
                                 else {
                                     phoneNumber = ""
