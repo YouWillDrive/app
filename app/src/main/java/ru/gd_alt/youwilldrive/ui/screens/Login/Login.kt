@@ -57,14 +57,19 @@ import kotlinx.coroutines.launch
 import ru.gd_alt.youwilldrive.R
 import ru.gd_alt.youwilldrive.data.DataStoreManager
 import ru.gd_alt.youwilldrive.ui.navigation.Route
+import ru.gd_alt.youwilldrive.ui.screens.Calendar.LoginViewModelFactory
 
 @Composable
-fun LoginScreen(navController: NavController? = null, viewModel: LoginViewModel = viewModel(), onSuccessfulLogin: (userId: String) -> Unit) {
+fun LoginScreen(navController: NavController? = null, onSuccessfulLogin: (userId: String) -> Unit) {
     var phoneNumber by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val dataStoreManager = DataStoreManager(context)
+
+    val viewModel : LoginViewModel = viewModel(
+        factory = LoginViewModelFactory(dataStoreManager)
+    )
 
     Surface(
         modifier = Modifier.fillMaxSize(),

@@ -27,4 +27,10 @@ class DataStoreManager(private val context: Context) {
             preferences[USER_ID_KEY]
         }
     }
+
+    suspend fun clearUserId() {
+        context.dataStore.edit { preferences ->
+            preferences.remove(USER_ID_KEY)
+        }
+    }
 }

@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import ru.gd_alt.youwilldrive.data.DataStoreManager
 import ru.gd_alt.youwilldrive.ui.components.BottomNavBar
@@ -67,17 +68,22 @@ class MainActivity : ComponentActivity() {
         setContent {
             val dataStoreManager = DataStoreManager(this)
             val navController = rememberNavController()
-            val userIdState = remember(dataStoreManager) {
-                dataStoreManager.getUserId()
-            }.collectAsState(initial = null)
 
-            val (startDestination, isLoading) = remember(userIdState.value) {
-                when (userIdState.value) {
-                    null -> Route.Login to false // null means logged out
-                    "" -> Route.Login to false   // empty string as logged out explicitly if needed
-                    else -> Route.Profile to false // logged in
+            var startDestination by remember { mutableStateOf<Route>(Route.Login) }
+            var isLoading by remember { mutableStateOf(true) }
+
+            LaunchedEffect(key1 = dataStoreManager) {
+                val userId = dataStoreManager.getUserId().first()
+                Log.d("MainActivity", "User ID: $userId")
+                startDestination = if (!userId.isNullOrEmpty()) {
+                    Route.Profile
+                } else {
+                    Route.Login
                 }
+                isLoading = false
             }
+
+            Log.d("MainActivity", "Start destination: $startDestination")
 
             val currentBackStackEntry by navController.currentBackStackEntryAsState()
 

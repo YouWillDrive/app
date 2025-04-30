@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -40,11 +41,14 @@ class ProfileViewModel(
         )
 
     fun fetchData() {
-        viewModelScope.launch(Dispatchers.IO) {
-            val user = User.fromId(userId.toString())
+        viewModelScope.launch {
             var data: Participant? = null
             var error: String? = null
             _profileState.value = ProfileState.Loading
+            val actualUserId = userId.first { it -> !it.isNullOrEmpty() }
+            val user = User.fromId(actualUserId.toString())
+            Log.d("fetchData", "User ID: $actualUserId")
+            Log.d("fetchData", "User: $user")
             try {
                 data = user?.isCadet() ?: user?.isInstructor()
                 Log.d("fetchData", "$data")

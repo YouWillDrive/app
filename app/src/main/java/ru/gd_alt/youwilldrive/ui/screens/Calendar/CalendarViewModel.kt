@@ -14,6 +14,7 @@ import ru.gd_alt.youwilldrive.models.User
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.first
 
 sealed class CalendarState {
     data object Idle : CalendarState()
@@ -41,17 +42,11 @@ class CalendarViewModel(
         _calendarState.value = CalendarState.Loading
         var events: List<Event>? = null
         var error: String? = null
-        val currentUserId = userId.value
-
-        if (currentUserId == null) {
-            error = "User ID is null"
-            _calendarState.value = CalendarState.Error(error)
-            return
-        }
 
         viewModelScope.launch(Dispatchers.IO) {
+            val actualUserId = userId.first { it -> !it.isNullOrEmpty() }
             try {
-                val user: User? = User.fromId(userId.value.toString())
+                val user: User? = User.fromId(actualUserId.toString())
                 events = (user?.isCadet() ?: user?.isInstructor())?.events() ?: listOf()
                 Log.d("fetchEvent", "Loaded events: $events")
             } catch (e: Exception) {
