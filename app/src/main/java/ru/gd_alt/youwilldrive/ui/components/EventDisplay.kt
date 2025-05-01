@@ -1,5 +1,6 @@
 package ru.gd_alt.youwilldrive.ui.components
 
+import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,6 +24,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -31,21 +33,27 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toInstant
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import kotlinx.datetime.toJavaLocalDateTime
 import ru.gd_alt.youwilldrive.R
+import ru.gd_alt.youwilldrive.models.Cadet
 import ru.gd_alt.youwilldrive.models.Event
 import ru.gd_alt.youwilldrive.models.EventType
+import ru.gd_alt.youwilldrive.models.Instructor
+import ru.gd_alt.youwilldrive.models.Participant
 import ru.gd_alt.youwilldrive.models.Placeholders
-import java.time.Instant
-import java.time.ZoneId
+import ru.gd_alt.youwilldrive.models.Role
+import ru.gd_alt.youwilldrive.models.User
 import java.time.format.DateTimeFormatter
 
 @Composable
 fun EventDisplay(
     modifier: Modifier = Modifier,
     events: List<Event> = emptyList(),
+    myRole: Role
 ) {
     Card(
         modifier = modifier
@@ -76,7 +84,7 @@ fun EventDisplay(
             if (events.isEmpty()) {
                 EmptyEventsView()
             } else {
-                EventsList(events = events)
+                EventsList(events = events, myRole = myRole)
             }
         }
     }
@@ -109,29 +117,33 @@ private fun EmptyEventsView() {
 }
 
 @Composable
-private fun EventsList(events: List<Event>) {
+private fun EventsList(events: List<Event>, myRole: Role) {
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(events) { event ->
-            EventItem(event = event)
+            EventItem(event = event, myRole = myRole)
         }
     }
 }
 
 @Composable
-private fun EventItem(event: Event) {
+private fun EventItem(event: Event, myRole: Role) {
     val dateTime = event.date.toJavaLocalDateTime()
 
-    val eventTypeColors = mutableMapOf<EventType, Color>(
-        EventType("1", "1") to Color(0xFF39A0ED),
-        EventType("2", "2") to Color(0xFF04724D),
-        EventType("3", "3") to Color(0xFF950952),
-        EventType("4", "4") to Color(0xFFD1D646),
+    val eventTypeColors = mutableMapOf<String, Color>(
+        "event_types:lesson" to Color(0xFF39A0ED),
+        "event_types:sai_exam" to Color(0xFF04724D),
+        "event_types:sai_lesson" to Color(0xFF950952),
+        "event_types:school_exam" to Color(0xFFD1D646),
     )
 
     val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
     val formattedTime = dateTime.format(timeFormatter)
+    var eventType by remember { mutableStateOf<EventType?>(null) }
+    var eventCadet by remember { mutableStateOf<Cadet?>(null) }
+    var eventInstructor by remember { mutableStateOf<Instructor?>(null) }
+    var displayParticipant by remember { mutableStateOf<User?>(null) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -147,11 +159,35 @@ private fun EventItem(event: Event) {
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            var eventColor by remember(event) { mutableStateOf<Color?>(null) }
+
+            LaunchedEffect(event) {
+                try {
+                    val type = event.eventType()
+                    eventColor = eventTypeColors[type!!.id] ?: Color.Gray
+                } catch (e: Exception) {
+                    Log.e("CalendarDay", "Error fetching event type for event ${event.id}: ${e.message}")
+                    eventColor = Color.Gray
+                }
+            }
+
+            LaunchedEffect(event) {
+                try {
+                    eventType = event.eventType()
+                    eventCadet = event.ofCadet()
+                    eventInstructor = event.ofInstructor()
+                    displayParticipant = (if (myRole.name == "Курсант") eventInstructor else eventCadet)!!.me()
+                } catch (e: Exception) {
+                    Log.e("CalendarDay", "Error fetching event type for event ${event.id}: ${e.message}")
+                    eventType = null
+                }
+            }
+
             // Event type indicator
             Surface(
                 modifier = Modifier.size(12.dp),
                 shape = CircleShape,
-                color = /* eventTypeColors[event.type] ?: */ Color.Gray
+                color = eventColor ?: Color.Gray
             ) {}
 
             Spacer(modifier = Modifier.width(16.dp))
@@ -161,13 +197,13 @@ private fun EventItem(event: Event) {
                 modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    text = /* event.type.name */ "A",
+                    text = eventType?.name ?: "XXX",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold
                 )
 
                 Text(
-                    text = /* event.cadet.user.name */ "Иванов Иван",
+                    text = "${displayParticipant?.name} ${displayParticipant?.patronymic} ${displayParticipant?.surname}",
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -187,11 +223,11 @@ private fun EventItem(event: Event) {
 @Preview(showBackground = true)
 @Composable
 fun EventDisplayPreview() {
-    EventDisplay(events = Placeholders.DefaultEventList)
+    EventDisplay(events = Placeholders.DefaultEventList, myRole = Role("x", "Cadet"))
 }
 
 @Preview(showBackground = true)
 @Composable
 fun EmptyEventDisplayPreview() {
-    EventDisplay(events = emptyList())
+    EventDisplay(events = emptyList(), myRole = Role("x", "Cadet"))
 }

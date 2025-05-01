@@ -13,6 +13,10 @@ class Cadet(override val id: String, var hoursAlready: Int) : Participant {
         }
     }
 
+    override suspend fun me() : User? {
+        return fetchRelatedSingle<User>("is_cadet", User::fromId, true)
+    }
+
     suspend fun planHistoryPoints() : MutableList<PlanHistoryPoint> {
         return fetchRelatedList<PlanHistoryPoint>("has_plan_points", PlanHistoryPoint::fromId, true)
     }

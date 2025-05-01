@@ -1,5 +1,6 @@
 package ru.gd_alt.youwilldrive.ui.components
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -21,7 +22,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,7 +39,6 @@ import androidx.compose.ui.unit.dp
 import kotlinx.datetime.toJavaLocalDateTime
 import ru.gd_alt.youwilldrive.R
 import ru.gd_alt.youwilldrive.models.Event
-import ru.gd_alt.youwilldrive.models.EventType
 import ru.gd_alt.youwilldrive.models.Placeholders
 import java.time.LocalDate
 import java.time.YearMonth
@@ -50,18 +54,18 @@ fun Calendar(
     events: List<Event>? = Placeholders.DefaultEventList,
     onDayClick: (Int) -> Unit = {
         day -> val selectedDate = "$day.$month.$year"
-        android.util.Log.d("Calendar", "Selected date: $selectedDate")
+        Log.d("Calendar", "Selected date: $selectedDate")
     }
 ) {
     val yearMonth = YearMonth.of(year, month)
     val daysInMonth = yearMonth.lengthOfMonth()
     val firstDayOfMonth = yearMonth.atDay(1).dayOfWeek.value % 7 - 1
 
-    val eventTypeColors = mutableMapOf<EventType, Color>(
-        EventType("1", "1") to Color(0xFF39A0ED),
-        EventType("2", "2") to Color(0xFF04724D),
-        EventType("3", "3") to Color(0xFF950952),
-        EventType("4", "4") to Color(0xFFD1D646),
+    val eventTypeColors = mutableMapOf<String, Color>(
+        "event_types:lesson" to Color(0xFF39A0ED),
+        "event_types:sai_exam" to Color(0xFF04724D),
+        "event_types:sai_lesson" to Color(0xFF950952),
+        "event_types:school_exam" to Color(0xFFD1D646),
     )
 
     ElevatedCard(
@@ -145,7 +149,7 @@ private fun RowScope.CalendarDay(
     modifier: Modifier = Modifier,
     day: Int,
     events: List<Event>,
-    eventTypeColors: Map<EventType, Color>,
+    eventTypeColors: Map<String, Color>,
     onClick: (Int) -> Unit
 ) {
     Card(
@@ -187,14 +191,25 @@ private fun RowScope.CalendarDay(
                     horizontalArrangement = Arrangement.Center
                 ) {
                     events.take(3).forEach { event ->
+                        var eventColor by remember(event) { mutableStateOf<Color?>(null) }
+
+                        LaunchedEffect(event) {
+                            try {
+                                val type = event.eventType()
+                                eventColor = eventTypeColors[type!!.id] ?: Color.Gray
+                            } catch (e: Exception) {
+                                Log.e("CalendarDay", "Error fetching event type for event ${event.id}: ${e.message}")
+                                eventColor = Color.Gray
+                            }
+                        }
+
                         Box(
                             modifier = Modifier
                                 .padding(horizontal = 2.dp)
                                 .size(6.dp)
                                 .clip(CircleShape)
                                 .background(
-                                    // eventTypeColors[event.type] ?: MaterialTheme.colorScheme.primary
-                                    MaterialTheme.colorScheme.primary
+                                    eventColor ?: Color.Gray,
                                 )
                         )
                     }

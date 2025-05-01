@@ -18,13 +18,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.State
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,16 +28,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import ru.gd_alt.youwilldrive.data.DataStoreManager
+import ru.gd_alt.youwilldrive.data.client.Connection
 import ru.gd_alt.youwilldrive.ui.components.BottomNavBar
 import ru.gd_alt.youwilldrive.ui.navigation.NavigationGraph
 import ru.gd_alt.youwilldrive.ui.navigation.Route
-import ru.gd_alt.youwilldrive.ui.theme.YouWillDriveTheme
 
 fun findRoute(routeId: Any?): Route? {
     val routeString = routeId as? String ?: return null
@@ -64,6 +60,10 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("RestrictedApi", "DiscouragedApi")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val applicationScope = CoroutineScope(SupervisorJob())
+        Connection.initialize(this, applicationScope)
+
         enableEdgeToEdge()
         setContent {
             val dataStoreManager = DataStoreManager(this)

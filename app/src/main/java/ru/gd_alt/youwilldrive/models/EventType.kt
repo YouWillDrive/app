@@ -2,7 +2,7 @@ package ru.gd_alt.youwilldrive.models
 
 class EventType(override val id: String, var name: String) : Identifiable {
     companion object : ModelCompanion<EventType> {
-        override val tableName: String = "event_type"
+        override val tableName: String = "event_types"
 
         override fun fromDictionary(dictionary: Map<*, *>): EventType {
             return EventType(dictionary["id"]!!.toString(), dictionary["name"]!!.toString())
@@ -15,7 +15,7 @@ class EventType(override val id: String, var name: String) : Identifiable {
 
     override fun hashCode(): Int {
         var result = id.hashCode()
-        result = 31 * result + name.hashCode()
+        result = 31 * result
         return result
     }
 }

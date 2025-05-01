@@ -9,6 +9,10 @@ class Instructor(override val id: String) : Participant {
         }
     }
 
+    override suspend fun me() : User? {
+        return fetchRelatedSingle<User>("is_instructor", User::fromId, true)
+    }
+
     suspend fun cars(): MutableList<Car> {
         return fetchRelatedList<Car>("has_car", Car::fromId)
     }

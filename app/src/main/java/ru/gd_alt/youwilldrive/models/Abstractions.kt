@@ -1,4 +1,5 @@
 package ru.gd_alt.youwilldrive.models
+import android.util.Log
 import ru.gd_alt.youwilldrive.data.client.Connection
 
 interface Identifiable {
@@ -100,21 +101,20 @@ suspend fun <T : Identifiable> Identifiable.fetchRelatedSingle(
     relatedFromId: suspend (String) -> T?,
     isChild: Boolean = false
 ): T? {
-    // Using runBlocking as requested
     val relatedObject: T? = run {
         try {
             val result: List<*>? = Connection.cl.select(linkTableName)
-            val linkMaps = result?.filterIsInstance<Map<*, *>>() // Safely filter for Maps
+            val linkMaps = result?.filterIsInstance<Map<*, *>>()
 
             linkMaps?.forEach { linkMap ->
                 val inId = linkMap[if (isChild) "out" else "in"]?.toString()
-                if (inId == this@fetchRelatedSingle.id) { // 'this' refers to the Identifiable object
+                if (inId == this@fetchRelatedSingle.id) {
                     val outId = linkMap[if (isChild) "in" else "out"]?.toString()
                     if (outId != null) {
                         try {
                             val foundObject = relatedFromId(outId)
                             if (foundObject != null) {
-                                return@run foundObject // Found the first match, return it
+                                return@run foundObject
                             }
                         } catch (e: Exception) {
                             System.err.println("Error fetching related object with ID '$outId' for link table '$linkTableName': ${e.message}")
@@ -137,4 +137,6 @@ interface Participant: Identifiable {
     suspend fun events() : List<Event> {
         return fetchRelatedList("event_of_cadet", Event::fromId, true)
     }
+
+    suspend fun me(): User?
 }

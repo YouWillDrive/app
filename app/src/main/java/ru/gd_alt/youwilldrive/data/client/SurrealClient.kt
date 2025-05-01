@@ -16,21 +16,55 @@ import org.java_websocket.extensions.IExtension
 import org.java_websocket.protocols.IProtocol
 import org.java_websocket.protocols.Protocol
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import java.util.concurrent.TimeUnit
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
-data class LiveQueryUpdate(
-    val id: String, // The ID of the record that changed (e.g., "table:id")
-    val action: String, // The type of change (e.g., "CREATE", "UPDATE", "DELETE")
-    val result: Any? // The data associated with the change (e.g., the new/updated record, null for DELETE)
-)
+
+enum class ConnectionStatus {
+    CONNECTED,
+    DISCONNECTED,
+    CONNECTING,
+    ERROR
+}
+
+
+sealed class LiveQueryUpdate {
+    abstract val id: String
+    abstract val data: Map<String, Any?>
+
+    /** A brand-new record appeared */
+    data class Create(
+        override val id: String,
+        override val data: Map<String, Any?>
+    ) : LiveQueryUpdate()
+
+    /** An existing record changed */
+    data class Update(
+        override val id: String,
+        override val data: Map<String, Any?>
+    ) : LiveQueryUpdate()
+
+    /** A record was removed */
+    data class Delete(
+        override val id: String,
+        override val data: Map<String, Any?>
+    ) : LiveQueryUpdate()
+
+    /** Who the hell knows */
+    data class Unknown(
+        override val id: String,
+        override val data: Map<String, Any?>,
+        val action: String
+    ) : LiveQueryUpdate()
+}
 
 class ConnectionError(message: String, cause: Throwable? = null) : RuntimeException(message, cause)
 
 class SurrealDBException(val code: Int, message: String) : RuntimeException("SurrealDB Error $code: $message")
-
-// Helper types for live query callbacks
-private abstract class CallbackType<T>
-private class SuspendCallbackType : CallbackType<suspend (LiveQueryUpdate) -> Unit>()
-private class RegularCallbackType : CallbackType<(LiveQueryUpdate) -> Unit>()
 
 // Data classes for RPC responses
 data class RpcSuccessResponse(
@@ -58,6 +92,14 @@ sealed class RpcResponsePayload {
     data class Error(val error: RpcErrorDetails) : RpcResponsePayload()
 }
 
+typealias SyncLiveUpdateCallback       = (LiveQueryUpdate) -> Unit
+typealias AsyncLiveUpdateCallback  = suspend (LiveQueryUpdate) -> Unit
+
+sealed class LiveUpdateCallback {
+    data class Sync(val cb: SyncLiveUpdateCallback) : LiveUpdateCallback()
+    data class Async(val cb: AsyncLiveUpdateCallback) : LiveUpdateCallback()
+}
+
 // Data class for live query updates
 // Assuming LiveQueryUpdate is defined in data.models or here if not
 // data class LiveQueryUpdate(val id: String, val action: String, val result: Any?)
@@ -76,7 +118,7 @@ class SurrealDBClient private constructor(
     private var webSocketClient: WebSocketClient? = null
     private val nextId = AtomicLong(0)
     private val pendingRequests = ConcurrentHashMap<Long, CompletableDeferred<RpcResponsePayload>>()
-    private val liveQueries = ConcurrentHashMap<String, Triple<Any, Boolean, CallbackType<*>>>()
+    private val liveQueries = ConcurrentHashMap<String, Triple<LiveUpdateCallback, String?, Map<String, Any?>?>>()
     private val liveQueriesMutex = Mutex()
 
     // Scope for handling messages; recreated on each connection
@@ -88,6 +130,10 @@ class SurrealDBClient private constructor(
     private var connectionReadyDeferred: CompletableDeferred<Unit> = CompletableDeferred()
     private val logger = KotlinLogging.logger {}
 
+    private val _connectionStatus = MutableStateFlow<ConnectionStatus>(ConnectionStatus.DISCONNECTED)
+    val connectionStatus: StateFlow<ConnectionStatus> = _connectionStatus.asStateFlow()
+    private var reconnectJob: Job? = null
+
     /**
      * Initialize or re-initialize the WebSocket client, perform signin, and invoke the on-connect callback.
      */
@@ -98,12 +144,22 @@ class SurrealDBClient private constructor(
         clientScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
         nextId.set(0)
         pendingRequests.clear()
-        liveQueriesMutex.withLock { liveQueries.clear() }
 
         // Create WebSocket client instance
         webSocketClient = object : WebSocketClient(uri, Draft_6455(emptyList<IExtension>(), protocols)) {
             override fun onOpen(handshakedata: ServerHandshake?) {
                 logger.info { "SurrealDB WebSocket connected: ${handshakedata?.httpStatus} - ${handshakedata?.httpStatusMessage}" }
+
+                clientScope.launch {
+                    while (isActive) {
+                        delay(5_000L)
+                        webSocketClient?.sendPing()
+                    }
+                }
+
+                // Update connection status
+                _connectionStatus.value = ConnectionStatus.CONNECTING
+
                 // Perform signin
                 clientScope.launch {
                     val signinId = nextId.incrementAndGet()
@@ -121,6 +177,8 @@ class SurrealDBClient private constructor(
                             is RpcResponsePayload.Success -> {
                                 logger.info { "SurrealDB signin successful" }
                                 connectionReadyDeferred.complete(Unit)
+                                _connectionStatus.value = ConnectionStatus.CONNECTED
+                                reconnectJob = null
                             }
                             is RpcResponsePayload.Error -> {
                                 val err = result.error
@@ -128,6 +186,7 @@ class SurrealDBClient private constructor(
                                 logger.error { msg }
                                 connectionReadyDeferred.completeExceptionally(ConnectionError(msg))
                                 closeConnection(0, "")
+                                _connectionStatus.value = ConnectionStatus.ERROR
                             }
                         }
                     } catch (e: Exception) {
@@ -140,6 +199,7 @@ class SurrealDBClient private constructor(
                             connectionReadyDeferred.completeExceptionally(ConnectionError(msg, e))
                         }
                         closeConnection(0, "")
+                        _connectionStatus.value = ConnectionStatus.ERROR
                     } finally {
                         pendingRequests.remove(signinId)
                     }
@@ -164,27 +224,36 @@ class SurrealDBClient private constructor(
 
             override fun onClose(code: Int, reason: String?, remote: Boolean) {
                 logger.info { "SurrealDB WebSocket closed: code=$code, reason='$reason', remote=$remote" }
+                println("SurrealDB WebSocket closed: code=$code, reason='$reason', remote=$remote")
                 val ex = ConnectionError("WebSocket closed: $code - $reason")
-                // Fail all pending requests
                 pendingRequests.forEach { (_, d) -> d.completeExceptionally(ex) }
-                pendingRequests.clear()
-                if (!connectionReadyDeferred.isCompleted) {
-                    connectionReadyDeferred.completeExceptionally(ex)
-                }
-                clientScope.cancel()
-                // Clear live queries
-                runBlocking { liveQueriesMutex.withLock { liveQueries.clear() } }
+
+                _connectionStatus.value = ConnectionStatus.DISCONNECTED
+                var backoff = 1000L
 
                 // Attempt reconnection if enabled
-                if (attemptReconnect) {
-                    reconnectionScope.launch {
-                        delay(1000) // Wait 1s before reconnect
-                        try {
-                            initialize()
-                        } catch (e: Exception) {
-                            logger.error { "Reconnection failed: ${e.message}" }
+                if (attemptReconnect && (reconnectJob == null || reconnectJob!!.isCompleted)) {
+                    reconnectJob = reconnectionScope.launch {
+                        while (isActive) {
+                            try {
+                                initialize()
+                                _connectionStatus.value = ConnectionStatus.CONNECTED
+                                reconnectJob = null
+                                break
+                            } catch (t: Throwable) {
+                                logger.warn { "Reconnect failed (${t.message}), will retry in ${backoff}ms" }
+                                backoff = (backoff + backoff / 2).coerceAtMost(10_000L)
+                                delay(backoff)
+                            }
                         }
                     }
+                }
+                else {
+                    if (!connectionReadyDeferred.isCompleted) {
+                        connectionReadyDeferred.completeExceptionally(ex)
+                    }
+                    if (!attemptReconnect) runBlocking { liveQueriesMutex.withLock { liveQueries.clear() } }
+                    clientScope.cancel()
                 }
             }
 
@@ -196,20 +265,50 @@ class SurrealDBClient private constructor(
                 if (!connectionReadyDeferred.isCompleted) {
                     connectionReadyDeferred.completeExceptionally(err)
                 }
-                // onClose will handle reconnection
             }
         }
 
         // Connect and await sign-in
         withContext(Dispatchers.IO) {
-            webSocketClient?.connectBlocking()
+            val ok = webSocketClient?.connectBlocking(5, TimeUnit.SECONDS)
+            ok?.let { if (!it) throw ConnectionError("Timed out connecting after 5s") }
         }
         connectionReadyDeferred.await()
         // Invoke user callback after successful (re)connection and sign-in
         onConnectCallback(this@SurrealDBClient)
+
+        if (!liveQueries.isEmpty()) {
+            logger.info { "Restarting live queries..." }
+            restartLiveQueries()
+        }
+    }
+
+    /** Restart all the live queries and recalculate their IDs. */
+    private suspend fun restartLiveQueries() {
+        liveQueriesMutex.withLock {
+            for ((id, triple) in liveQueries) {
+                try {
+                    val (callback, reproduceVia, reproduceVars) = triple
+                    if (reproduceVia == null) {
+                        logger.info { "Live query with id $id is not reproduceable. May be intended." }
+                        liveQueries.remove(id)
+                        continue
+                    }
+                    val result = sendRpc("query", listOf(reproduceVia, reproduceVars ?: emptyMap<String, Any?>()))
+                    val newUuid = (result as List<Map<String, Any?>?>)[0]?.get("result")
+                    liveQueries[newUuid.toString()] = Triple(callback, reproduceVia, reproduceVars)
+
+                    logger.info { "Restarted live query: $id -> ${newUuid.toString()}" }
+                    liveQueries.remove(id)
+                } catch (e: Exception) {
+                    logger.error { "Error restarting live query: ${e.message}" }
+                }
+            }
+        }
     }
 
     /** Handle incoming CBOR-decoded messages. */
+    @OptIn(ExperimentalUuidApi::class)
     private fun handleIncomingMessage(decoded: Any?) {
         if (decoded is Map<*, *>) {
             val id = decoded["id"]
@@ -221,13 +320,14 @@ class SurrealDBClient private constructor(
                     val mid = id.toLong()
                     val deferred = pendingRequests.remove(mid)
                     if (deferred != null) {
-                        when {
-                            error == null -> deferred.complete(RpcResponsePayload.Success(result))
-                            error is Map<*, *> -> {
+                        when (error) {
+                            null -> deferred.complete(RpcResponsePayload.Success(result))
+                            is Map<*, *> -> {
                                 val code = (error["code"] as? Number)?.toInt() ?: -1
                                 val msg = error["message"] as? String ?: "Unknown"
                                 deferred.complete(RpcResponsePayload.Error(RpcErrorDetails(code, msg)))
                             }
+
                             else -> deferred.completeExceptionally(RuntimeException("Unexpected response: $decoded"))
                         }
                     } else {
@@ -235,18 +335,23 @@ class SurrealDBClient private constructor(
                     }
                 }
                 id == null && result is Map<*, *> -> {
-                    val qid = result["id"] as? String
+                    val qid = result["id"] as? Uuid
                     val action = result["action"] as? String
                     val data = result["result"]
                     if (qid != null && action != null) {
-                        val update = LiveQueryUpdate(qid, action, data)
+                        var update = when (action) {
+                            "CREATE" -> LiveQueryUpdate.Create(qid.toString(), data as Map<String, Any?>)
+                            "UPDATE" -> LiveQueryUpdate.Update(qid.toString(), data as Map<String, Any?>)
+                            "DELETE" -> LiveQueryUpdate.Delete(qid.toString(), data as Map<String, Any?>)
+                            else -> LiveQueryUpdate.Unknown(qid.toString(), data as Map<String, Any?>, action)
+                        }
                         clientScope.launch {
                             liveQueriesMutex.withLock {
-                                val (cb, _, cbType) = liveQueries[qid] ?: return@withLock
+                                val (cb, _, _) = liveQueries[qid.toString()] ?: return@withLock
                                 try {
-                                    when (cbType) {
-                                        is SuspendCallbackType -> (cb as suspend (LiveQueryUpdate) -> Unit).invoke(update)
-                                        is RegularCallbackType -> (cb as (LiveQueryUpdate) -> Unit).invoke(update)
+                                    when (cb) {
+                                        is LiveUpdateCallback.Sync -> cb.cb(update)
+                                        is LiveUpdateCallback.Async -> cb.cb(update)
                                     }
                                 } catch (e: Exception) {
                                     logger.error { "Callback error: ${e.message}" }
@@ -510,23 +615,22 @@ class SurrealDBClient private constructor(
      * The server returns a live query ID. Use [attachLiveQuery] if starting a custom LIVE query via [query].
      * You must kill the live query with [kill] when done.
      * @param entity table name to watch for changes.
-     * @param callback callback function to execute when query results change. Can be a regular or suspend function `(LiveQueryUpdate) -> Unit` or `suspend (LiveQueryUpdate) -> Unit`.
-     * @param isAsync ignored - callbacks are always dispatched asynchronously in the client's CoroutineScope.
-     * @return live query ID string.
+     * @param callback callback function to execute when query results change. Must be an instance of LiveUpdateCallback.
+     * @param doNotReproduce if true, the query will not be reproduced on reconnection. Recommended to be set to true if you start your query in onConnectCallback.
+     * @return live query UUID string.
      * @throws SurrealDBException if SurrealDB returns an error.
      * @throws ConnectionError if the connection fails.
      * @throws RuntimeException if the response from the server is not the expected string ID.
      */
-    suspend fun live(entity: String, callback: Any): String { // Callback type is Any to allow both suspend and non-suspend lambdas
+    @OptIn(ExperimentalUuidApi::class)
+    suspend fun live(entity: String, callback: LiveUpdateCallback, doNotReproduce: Boolean = false): String {
         val responseResult = sendRpc("live", listOf(entity))
 
-        if (responseResult is String) {
-            // Server returned the live query ID string
-            attachLiveQuery(responseResult, callback) // Attach the provided callback
-            return responseResult // Return the query ID
+        if (responseResult is Uuid) {
+            attachLiveQuery(responseResult.toString(), callback, "LIVE SELECT FROM $entity", doNotReproduce = doNotReproduce)
+            return responseResult.toString()
         } else {
-            // Unexpected response format
-            throw RuntimeException("Failed to start live query: Expected string ID but received $responseResult")
+            throw RuntimeException("Failed to start live query: Expected UUID but received $responseResult")
         }
     }
 
@@ -534,18 +638,50 @@ class SurrealDBClient private constructor(
      * Attach a callback function to a live query ID that was previously started
      * (e.g., by executing a `LIVE SELECT ...` query via the [query] method).
      * @param queryId live query ID obtained from the server response.
-     * @param callback callback function to execute when query results change. Can be a regular or suspend function `(LiveQueryUpdate) -> Unit` or `suspend (LiveQueryUpdate) -> Unit`.
-     * @param isAsync ignored - callbacks are always dispatched asynchronously in the client's CoroutineScope.
+     * @param callback callback function to execute when query results change. Must be an instance of LiveUpdateCallback.
+     * @param reproduceVia query string used to reproduce the live query. Will be used to recreate queries on reconnection.
+     * @param reproduceVars optional variables used in the query.
+     * @param doNotReproduce if true, the query will not be reproduced on reconnection. Recommended to be set to true if you start your query in onConnectCallback.
      */
-    suspend fun attachLiveQuery(queryId: String, callback: Any, isAsync: Boolean = false) {
-        val callbackType = when (callback) {
-            is Function1<*, *> -> RegularCallbackType()
-            else -> SuspendCallbackType() // Nehme an, dass es eine Suspend-Funktion ist, wenn nicht Function1
+    suspend fun attachLiveQuery(queryId: String, callback: LiveUpdateCallback, reproduceVia: String, reproduceVars: Map<String, Any?>? = null, doNotReproduce: Boolean = false) {
+        liveQueriesMutex.withLock {
+            liveQueries[queryId] = Triple(callback, if (doNotReproduce) null else reproduceVia, reproduceVars ?: emptyMap())
+            logger.info { "Attached callback for live query ID: $queryId" }
+        }
+    }
+
+    /**
+     * Run a custom query, get corresponding live query ID, and attach a callback.
+     * Shorthand for combination of [query] and [attachLiveQuery].
+     * @param query custom query string. Must include the `LIVE` keyword. E.g. `"LIVE SELECT * FROM table"`.
+     * @param variables query variables as a Map, or null.
+     * @param callback callback function to execute when query results change. Must be an instance of LiveUpdateCallback.
+     * @param doNotReproduce if true, the query will not be reproduced on reconnection. Recommended to be set to true if you start your query in onConnectCallback.
+     */
+    @OptIn(ExperimentalUuidApi::class)
+    suspend fun liveQuery(query: String, variables: Map<String, Any?>? = null, callback: LiveUpdateCallback, doNotReproduce: Boolean = false): String {
+        val responseResult = sendRpc("query", listOf(query, variables ?: emptyMap<String, Any?>()))
+
+        if (responseResult is List<*>) {
+            val result = responseResult.firstOrNull()
+            if (result is Map<*, *>) {
+                val qid = result["result"] as? Uuid
+                if (qid != null) {
+                    attachLiveQuery(qid.toString(), callback, query, variables, doNotReproduce)
+                    return qid.toString()
+                } else {
+                    throw RuntimeException("Failed to start live query: Expected UUID but received $result")
+                }
+            } else {
+                throw RuntimeException("Failed to start live query: Expected Map but received $result")
+            }
         }
 
-        liveQueriesMutex.withLock {
-            liveQueries[queryId] = Triple(callback, isAsync, callbackType)
-            logger.info { "Attached callback for live query ID: $queryId" }
+        if (responseResult is Uuid) {
+            attachLiveQuery(responseResult.toString(), callback, query, variables)
+            return responseResult.toString()
+        } else {
+            throw RuntimeException("Failed to start live query: Expected UUID but received $responseResult")
         }
     }
 

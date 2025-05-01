@@ -27,10 +27,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.flow.first
 import kotlinx.datetime.toJavaLocalDateTime
 import ru.gd_alt.youwilldrive.data.DataStoreManager
 import ru.gd_alt.youwilldrive.models.Event
 import ru.gd_alt.youwilldrive.models.Placeholders.DefaultUser
+import ru.gd_alt.youwilldrive.models.Role
 import ru.gd_alt.youwilldrive.models.User
 import ru.gd_alt.youwilldrive.ui.components.Calendar
 import ru.gd_alt.youwilldrive.ui.components.EventDisplay
@@ -119,12 +121,19 @@ fun CalendarScreen(
             }
         )
 
+        var myRole by remember { mutableStateOf<Role?>(null) }
+
+        LaunchedEffect(Unit) {
+            myRole = User.fromId(dataStoreManager.getUserId().first()!!)!!.role()
+        }
+
         // Events display at the bottom, stretching to fill remaining space
         EventDisplay(
             modifier = Modifier
                 .fillMaxHeight()
                 .weight(1f),
-            events = displayedEvents
+            events = displayedEvents,
+            myRole = myRole ?: Role("x", "Кадет"),
         )
     }
 }

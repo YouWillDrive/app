@@ -76,8 +76,7 @@ val customDeHook: (Long, Any?) -> Any? = { tag, decodedItem ->
             Future(listOf())
         }
         CustomTags.TAG_BIN_UUID -> {
-            decodedItem as String
-            Uuid.fromByteArray(decodedItem.encodeToByteArray())
+            Uuid.fromByteArray(decodedItem as ByteArray)
         }
         CustomTags.TAG_RANGE -> {
             val list = decodedItem as List<*>
