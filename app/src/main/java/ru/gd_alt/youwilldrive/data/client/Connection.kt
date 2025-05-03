@@ -57,7 +57,6 @@ object Connection {
             showNotification(appContext, title, content, notificationId)
         }
 
-        // Launch client initialization within the provided scope
         clientScope.launch {
             try {
                 _cl = SurrealDBClient.create(

@@ -60,7 +60,7 @@ import ru.gd_alt.youwilldrive.ui.navigation.Route
 import ru.gd_alt.youwilldrive.ui.screens.Calendar.LoginViewModelFactory
 
 @Composable
-fun LoginScreen(navController: NavController? = null, onSuccessfulLogin: (userId: String) -> Unit) {
+fun LoginScreen(navController: NavController? = null, onSuccessfulLogin: (userId: String) -> Unit = {}) {
     var phoneNumber by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
@@ -176,7 +176,9 @@ fun LoginScreen(navController: NavController? = null, onSuccessfulLogin: (userId
                                     onSuccessfulLogin(user.id)
                                     (context as? LifecycleOwner)?.lifecycleScope?.launch {
                                         dataStoreManager.saveUserId(user.id)
-                                        navController?.navigate(Route.Profile)
+                                        navController?.navigate(Route.Profile) {
+                                            popUpTo(Route.Login) { inclusive = true }
+                                        }
                                     }
                                 }
                                 else {

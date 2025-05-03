@@ -45,7 +45,7 @@ class ProfileViewModel(
             var data: Participant? = null
             var error: String? = null
             _profileState.value = ProfileState.Loading
-            val actualUserId = userId.first { it -> !it.isNullOrEmpty() }
+            val actualUserId = userId.first { !it.isNullOrEmpty() }
             val user = User.fromId(actualUserId.toString())
             Log.d("fetchData", "User ID: $actualUserId")
             Log.d("fetchData", "User: $user")

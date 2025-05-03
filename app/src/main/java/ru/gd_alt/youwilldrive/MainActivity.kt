@@ -10,8 +10,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -62,6 +66,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         val applicationScope = CoroutineScope(SupervisorJob())
+        Log.d("onCreate", "initd")
         Connection.initialize(this, applicationScope)
 
         enableEdgeToEdge()
@@ -97,7 +102,6 @@ class MainActivity : ComponentActivity() {
 
             MaterialTheme {
                 if (isLoading) {
-                    // Show a loading indicator while checking login state
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
                     }
@@ -113,6 +117,18 @@ class MainActivity : ComponentActivity() {
                                             fontWeight = FontWeight.Bold)
                                     },
                                     modifier = Modifier.clip(RoundedCornerShape(0.dp, 0.dp, 20.dp, 20.dp)),
+                                    actions = {
+                                        IconButton({
+                                            navController.popBackStack()
+                                            navController.navigate(currentRouteObject)
+                                        }) {
+                                            Icon(
+                                                Icons.Outlined.Refresh,
+                                                "Refresh",
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                    },
                                     colors = topAppBarColors(
                                         containerColor = MaterialTheme.colorScheme.primaryContainer,
                                         titleContentColor = MaterialTheme.colorScheme.primary,
@@ -130,9 +146,9 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     ) { innerPadding ->
-                        NavigationGraph(Modifier.padding(innerPadding), navController, startDestination, dataStoreManager)
+                        NavigationGraph(Modifier.padding(innerPadding), navController, startDestination)
                     }
-                    }
+                }
             }
         }
     }
