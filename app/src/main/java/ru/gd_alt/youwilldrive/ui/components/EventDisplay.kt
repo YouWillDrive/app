@@ -1,6 +1,7 @@
 package ru.gd_alt.youwilldrive.ui.components
 
 import android.util.Log
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -53,7 +54,8 @@ import java.time.format.DateTimeFormatter
 fun EventDisplay(
     modifier: Modifier = Modifier,
     events: List<Event> = emptyList(),
-    myRole: Role
+    myRole: Role,
+    onEventSelection: (Event) -> Unit = {}
 ) {
     Card(
         modifier = modifier
@@ -84,7 +86,7 @@ fun EventDisplay(
             if (events.isEmpty()) {
                 EmptyEventsView()
             } else {
-                EventsList(events = events, myRole = myRole)
+                EventsList(events = events, myRole = myRole, onEventSelection = onEventSelection)
             }
         }
     }
@@ -117,18 +119,18 @@ private fun EmptyEventsView() {
 }
 
 @Composable
-private fun EventsList(events: List<Event>, myRole: Role) {
+private fun EventsList(events: List<Event>, myRole: Role, onEventSelection: (Event) -> Unit = {}) {
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(events) { event ->
-            EventItem(event = event, myRole = myRole)
+            EventItem(event, myRole, onEventSelection)
         }
     }
 }
 
 @Composable
-private fun EventItem(event: Event, myRole: Role) {
+private fun EventItem(event: Event, myRole: Role, onClick: (Event) -> Unit = {}) {
     val dateTime = event.date.toJavaLocalDateTime()
 
     val eventTypeColors = mutableMapOf<String, Color>(
@@ -146,7 +148,7 @@ private fun EventItem(event: Event, myRole: Role) {
     var displayParticipant by remember { mutableStateOf<User?>(null) }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().clickable { onClick(event) },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)

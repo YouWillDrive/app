@@ -34,6 +34,8 @@ import androidx.compose.ui.unit.dp
 @Preview(showBackground = true)
 @Composable
 fun EventEditScreen() {
+    // TODO: Replace strings with resource IDs
+
     val datePickerState = rememberDatePickerState()
     val timePickerState = rememberTimePickerState()
     var datePickerOpen by remember { mutableStateOf(false) }
