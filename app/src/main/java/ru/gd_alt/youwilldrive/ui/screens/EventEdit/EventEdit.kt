@@ -1,21 +1,25 @@
 package ru.gd_alt.youwilldrive.ui.screens.EventEdit
 
-import android.app.TimePickerDialog
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material3.BasicAlertDialog
+import androidx.compose.material3.Card
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
@@ -27,61 +31,81 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import ru.gd_alt.youwilldrive.R
+import ru.gd_alt.youwilldrive.models.Event
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true)
 @Composable
-fun EventEditScreen() {
-    // TODO: Replace strings with resource IDs
-
+fun EventEditDialog(event: Event? = null, onConfirm: () -> Unit = {}) {
+    // TODO: Bind event properties
+    // TODO: Add onDismiss
     val datePickerState = rememberDatePickerState()
     val timePickerState = rememberTimePickerState()
     var datePickerOpen by remember { mutableStateOf(false) }
     var timePickerOpen by remember { mutableStateOf(false) }
 
-    Column(
-        Modifier.fillMaxWidth()
-    ) {
-        Row(
-            Modifier.padding(10.dp).fillMaxWidth().clickable { datePickerOpen = true },
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("Дата")
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("${datePickerState.selectedDateMillis}")
-                Icon(
-                    Icons.Default.ArrowDropDown,
-                    "Дата"
-                )
-            }
-        }
-        Row(
-            Modifier.padding(10.dp).fillMaxWidth().clickable { timePickerOpen = true },
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("Время")
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("${timePickerState.hour}:${timePickerState.minute}")
-                Icon(
-                    Icons.Default.ArrowDropDown,
-                    "Время"
-                )
-            }
-        }
 
-        Row(
-            Modifier.padding(10.dp).fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
-        ) {
-            TextButton({}) {
-                Text("Отмена")
-            }
-            TextButton({}) {
-                Text("Ок")
+    BasicAlertDialog(
+        {}
+    ) {
+        Card {
+            Column(
+                Modifier.fillMaxWidth().padding(20.dp)
+            ) {
+                Row(
+                    Modifier.fillMaxWidth().clickable { datePickerOpen = true },
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(stringResource(R.string.date))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("${datePickerState.selectedDateMillis}")
+                        Icon(
+                            Icons.Default.ArrowDropDown,
+                            stringResource(R.string.date)
+                        )
+                    }
+                }
+                Row(
+                    Modifier.fillMaxWidth().clickable { timePickerOpen = true },
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(stringResource(R.string.time))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("${timePickerState.hour}:${timePickerState.minute}")
+                        Icon(
+                            Icons.Default.ArrowDropDown,
+                            stringResource(R.string.time)
+                        )
+                    }
+                }
+
+                Spacer(Modifier.size(20.dp))
+
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Text(
+                        stringResource(R.string.cancel),
+                        Modifier.weight(1f).clickable {  },
+                        MaterialTheme.colorScheme.primary,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        stringResource(R.string.ok),
+                        Modifier.weight(1f).clickable { onConfirm() },
+                        MaterialTheme.colorScheme.primary,
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
         }
     }
@@ -93,12 +117,12 @@ fun EventEditScreen() {
             onDismissRequest = onDismiss,
             confirmButton = {
                 TextButton(onClick = onDismiss) {
-                    Text("Ок")
+                    Text(stringResource(R.string.ok))
                 }
             },
             dismissButton = {
                 TextButton(onClick = onDismiss) {
-                    Text("Отмена")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         ) {
@@ -112,12 +136,12 @@ fun EventEditScreen() {
             onDismissRequest = onDismiss,
             confirmButton = {
                 TextButton(onClick = onDismiss) {
-                    Text("Ок")
+                    Text(stringResource(R.string.ok))
                 }
             },
             dismissButton = {
                 TextButton(onClick = onDismiss) {
-                    Text("Отмена")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         ) {

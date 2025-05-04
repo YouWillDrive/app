@@ -7,10 +7,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -39,6 +41,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import ru.gd_alt.youwilldrive.data.DataStoreManager
 import ru.gd_alt.youwilldrive.data.client.Connection
+import ru.gd_alt.youwilldrive.models.User
 import ru.gd_alt.youwilldrive.ui.components.BottomNavBar
 import ru.gd_alt.youwilldrive.ui.navigation.NavigationGraph
 import ru.gd_alt.youwilldrive.ui.navigation.Route
@@ -76,6 +79,7 @@ class MainActivity : ComponentActivity() {
 
             var startDestination by remember { mutableStateOf<Route>(Route.Login) }
             var isLoading by remember { mutableStateOf(true) }
+            var user: User? by remember { mutableStateOf(null) }
 
             LaunchedEffect(key1 = dataStoreManager) {
                 val userId = dataStoreManager.getUserId().first()
@@ -85,6 +89,7 @@ class MainActivity : ComponentActivity() {
                 } else {
                     Route.Login
                 }
+                user = User.fromId(userId ?: "")
                 isLoading = false
             }
 
@@ -93,8 +98,6 @@ class MainActivity : ComponentActivity() {
             val currentBackStackEntry by navController.currentBackStackEntryAsState()
 
             val currentRouteObject: Route? = remember(currentBackStackEntry) {
-                // This relies on NavigationGraph using type-safe navigation
-                // and the nav library correctly associating the Route object.
                 currentBackStackEntry?.destination?.route?.let { routeId ->
                     findRoute(routeId)
                 }
@@ -118,13 +121,26 @@ class MainActivity : ComponentActivity() {
                                     },
                                     modifier = Modifier.clip(RoundedCornerShape(0.dp, 0.dp, 20.dp, 20.dp)),
                                     actions = {
+                                        if (user != null && currentRouteObject is Route.Calendar) {
+                                            IconButton(
+                                                {
+                                                    // TODO: Open EventEditDialog
+                                                }
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.Add,
+                                                    "Add", // TODO
+                                                    tint = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+                                        }
                                         IconButton({
                                             navController.popBackStack()
                                             navController.navigate(currentRouteObject)
                                         }) {
                                             Icon(
                                                 Icons.Outlined.Refresh,
-                                                "Refresh",
+                                                "Refresh", // TODO
                                                 tint = MaterialTheme.colorScheme.primary
                                             )
                                         }

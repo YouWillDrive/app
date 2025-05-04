@@ -31,12 +31,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.datetime.toJavaLocalDateTime
+import ru.gd_alt.youwilldrive.R
 import ru.gd_alt.youwilldrive.data.DataStoreManager
 import ru.gd_alt.youwilldrive.models.Event
 import ru.gd_alt.youwilldrive.models.Role
@@ -103,30 +105,30 @@ fun CalendarScreen(
     }
 
     if (selectedEvent != null) {
-        val onDismiss = {selectedEvent = null}
+        val onDismiss = {selectedEvent = null} // TODO
         BasicAlertDialog(onDismiss) {
             Card {
                 Column(Modifier.padding(20.dp)) {
-                    Text("Подтвердить событие?")
+                    Text(stringResource(R.string.confirm_event_ask))
                     Spacer(Modifier.height(20.dp))
                     Row(
                         Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End
                     ) {
                         Text(
-                            "Отмена",
+                            stringResource(R.string.cancel),
                             Modifier.weight(0.5f).clickable { onDismiss() },
                             color = MaterialTheme.colorScheme.primary,
                             textAlign = TextAlign.Center
                         )
                         Text(
-                            "Перенести",
-                            Modifier.weight(0.5f).clickable { onDismiss() },
+                            stringResource(R.string.postpone),
+                            Modifier.weight(0.5f).clickable { onDismiss() },  // TODO
                             color = MaterialTheme.colorScheme.primary,
                             textAlign = TextAlign.Center
                         )
                         Text(
-                            "Да",
+                            stringResource(R.string.yes),
                             Modifier.weight(0.5f).clickable { onDismiss() },
                             color = MaterialTheme.colorScheme.primary,
                             textAlign = TextAlign.Center
