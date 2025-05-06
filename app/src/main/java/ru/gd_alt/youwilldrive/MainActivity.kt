@@ -45,6 +45,7 @@ import ru.gd_alt.youwilldrive.models.User
 import ru.gd_alt.youwilldrive.ui.components.BottomNavBar
 import ru.gd_alt.youwilldrive.ui.navigation.NavigationGraph
 import ru.gd_alt.youwilldrive.ui.navigation.Route
+import ru.gd_alt.youwilldrive.ui.screens.EventEdit.EventEditDialog
 
 fun findRoute(routeId: Any?): Route? {
     val routeString = routeId as? String ?: return null
@@ -121,19 +122,6 @@ class MainActivity : ComponentActivity() {
                                     },
                                     modifier = Modifier.clip(RoundedCornerShape(0.dp, 0.dp, 20.dp, 20.dp)),
                                     actions = {
-                                        if (user != null && currentRouteObject is Route.Calendar) {
-                                            IconButton(
-                                                {
-                                                    // TODO: Open EventEditDialog
-                                                }
-                                            ) {
-                                                Icon(
-                                                    Icons.Default.Add,
-                                                    "Add", // TODO
-                                                    tint = MaterialTheme.colorScheme.primary
-                                                )
-                                            }
-                                        }
                                         IconButton({
                                             navController.popBackStack()
                                             navController.navigate(currentRouteObject)

@@ -36,6 +36,7 @@
     <string name="plan">Тариф</string>
     <string name="practice_hours">Практика</string>
     <string name="profile">Профиль</string>
+    <string name="cadet">Курсант</string>
     <string name="cadets">Курсанты</string>
     <string name="calendar">Календарь</string>
     <string name="invalid_credentials">Неверный логин или пароль!</string>

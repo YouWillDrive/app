@@ -16,11 +16,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.InsertEmoticon
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonColors
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -83,11 +87,14 @@ fun EventDisplay(
             HorizontalDivider()
             Spacer(modifier = Modifier.height(8.dp))
 
-            if (events.isEmpty()) {
+
+
+            if (events.isEmpty() && myRole.name != "Инструктор") {
                 EmptyEventsView()
             } else {
                 EventsList(events = events, myRole = myRole, onEventSelection = onEventSelection)
             }
+            EventAddItemButton() // TODO: Show EventEditDialog
         }
     }
 }
@@ -218,6 +225,43 @@ private fun EventItem(event: Event, myRole: Role, onClick: (Event) -> Unit = {})
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium
             )
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun EventAddItemButton(onClick: () -> Unit = {}) {
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            Color.Transparent
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Spacer(Modifier.weight(1f))
+
+            IconButton(
+                {},
+                Modifier.weight(1f),
+                colors = IconButtonDefaults.iconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+                )
+            ) {
+                Icon(
+                    Icons.Default.Add,
+                    "Добавить событие" // TODO: Add to resources
+                )
+            }
+
+            Spacer(Modifier.weight(1f))
         }
     }
 }
