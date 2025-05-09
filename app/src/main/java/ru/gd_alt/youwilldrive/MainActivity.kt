@@ -7,12 +7,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -45,7 +43,6 @@ import ru.gd_alt.youwilldrive.models.User
 import ru.gd_alt.youwilldrive.ui.components.BottomNavBar
 import ru.gd_alt.youwilldrive.ui.navigation.NavigationGraph
 import ru.gd_alt.youwilldrive.ui.navigation.Route
-import ru.gd_alt.youwilldrive.ui.screens.EventEdit.EventEditDialog
 
 fun findRoute(routeId: Any?): Route? {
     val routeString = routeId as? String ?: return null

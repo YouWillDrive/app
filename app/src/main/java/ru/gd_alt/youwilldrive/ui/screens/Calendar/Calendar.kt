@@ -1,5 +1,6 @@
 package ru.gd_alt.youwilldrive.ui.screens.Calendar
 
+import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,6 +38,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.flow.first
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
 import kotlinx.datetime.toJavaLocalDateTime
 import ru.gd_alt.youwilldrive.R
 import ru.gd_alt.youwilldrive.data.DataStoreManager
@@ -46,6 +50,7 @@ import ru.gd_alt.youwilldrive.models.User
 import ru.gd_alt.youwilldrive.ui.components.Calendar
 import ru.gd_alt.youwilldrive.ui.components.EventDisplay
 import ru.gd_alt.youwilldrive.ui.components.MonthSelector
+import ru.gd_alt.youwilldrive.ui.screens.EventEdit.EventEditDialog
 import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -65,6 +70,7 @@ fun CalendarScreen(
     val factory = remember(dataStoreManager) {
         CalendarViewModelFactory(dataStoreManager)
     }
+    val eventEditOpen = remember { mutableStateOf(false) }
 
     val viewModel: CalendarViewModel = viewModel(factory = factory)
     val fetchState by viewModel.calendarState.collectAsState()
@@ -117,19 +123,25 @@ fun CalendarScreen(
                     ) {
                         Text(
                             stringResource(R.string.cancel),
-                            Modifier.weight(0.5f).clickable { onDismiss() },
+                            Modifier
+                                .weight(0.5f)
+                                .clickable { onDismiss() },
                             color = MaterialTheme.colorScheme.primary,
                             textAlign = TextAlign.Center
                         )
                         Text(
                             stringResource(R.string.postpone),
-                            Modifier.weight(0.5f).clickable { onDismiss() },  // TODO
+                            Modifier
+                                .weight(0.5f)
+                                .clickable { onDismiss() },  // TODO
                             color = MaterialTheme.colorScheme.primary,
                             textAlign = TextAlign.Center
                         )
                         Text(
                             stringResource(R.string.yes),
-                            Modifier.weight(0.5f).clickable { onDismiss() },
+                            Modifier
+                                .weight(0.5f)
+                                .clickable { onDismiss() },
                             color = MaterialTheme.colorScheme.primary,
                             textAlign = TextAlign.Center
                         )
@@ -180,10 +192,20 @@ fun CalendarScreen(
                 .fillMaxHeight()
                 .weight(1f),
             events = displayedEvents,
-            myRole = myRole ?: Role("x", "Кадет")
+            myRole = myRole ?: Role("x", "Кадет"),
+            onAddEvent = { eventEditOpen.value = true }
         ) {
             selectedEvent = it
         }
+
+        EventEditDialog(eventEditOpen,
+            LocalDateTime(
+                currentYear, currentMonth, (selectedDay ?: 0) + 1,
+                0, 0, 0
+            )
+                .toInstant(TimeZone.currentSystemDefault())
+                .toEpochMilliseconds())
+        Log.d("CalendarScreen", "${eventEditOpen.value}")
     }
 }
 

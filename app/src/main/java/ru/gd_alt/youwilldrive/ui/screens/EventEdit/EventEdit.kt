@@ -14,16 +14,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Card
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.TimePicker
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
@@ -38,11 +38,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.format
+import kotlinx.datetime.format.char
 import kotlinx.datetime.toKotlinInstant
 import kotlinx.datetime.toLocalDateTime
 import ru.gd_alt.youwilldrive.R
-import ru.gd_alt.youwilldrive.models.Event
 import java.time.Instant
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -50,13 +53,14 @@ import java.time.Instant
 @Composable
 fun EventEditDialog(
     dialogOpen: MutableState<Boolean> = remember { mutableStateOf(false) },
-    event: Event? = null,
-    onConfirm: (Event) -> Unit = {}
+    selectedDateMillis: Long = Instant.now().toEpochMilli(),
+    onConfirm: (LocalDateTime) -> Unit = {}
 ) {
     if (!dialogOpen.value) return
 
     // TODO: Bind event properties
     val datePickerState = rememberDatePickerState()
+    datePickerState.selectedDateMillis = selectedDateMillis
     val timePickerState = rememberTimePickerState()
     var datePickerOpen by remember { mutableStateOf(false) }
     var timePickerOpen by remember { mutableStateOf(false) }
@@ -84,7 +88,15 @@ fun EventEditDialog(
                 ) {
                     Text(stringResource(R.string.date))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("${datePickerState.selectedDateMillis}")
+                        Text(
+                            kotlinx.datetime.Instant.fromEpochMilliseconds(
+                                datePickerState.selectedDateMillis ?: Instant.now().toEpochMilli()
+                            ).toLocalDateTime(TimeZone.currentSystemDefault()).date.format(
+                                LocalDate.Format {
+                                    dayOfMonth(); char('.'); monthNumber(); char('.'); year()
+                                }
+                            )
+                        )
                         Icon(
                             Icons.Default.ArrowDropDown,
                             stringResource(R.string.date)
@@ -100,7 +112,11 @@ fun EventEditDialog(
                 ) {
                     Text(stringResource(R.string.time))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("${timePickerState.hour}:${timePickerState.minute}")
+                        Text(
+                            "${timePickerState.hour}".padStart(2, '0')
+                            + ":"
+                            + "${timePickerState.minute}".padStart(2, '0')
+                        )
                         Icon(
                             Icons.Default.ArrowDropDown,
                             stringResource(R.string.time)
@@ -115,6 +131,20 @@ fun EventEditDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(stringResource(R.string.cadet))
+                    DropdownMenu(
+                        expanded = cadetPickerOpen,
+                        onDismissRequest = { cadetPickerOpen = false }
+                    ) {
+                        // TODO
+                        DropdownMenuItem(
+                            text = { Text("Кадет 1") },
+                            onClick = { cadetPickerOpen = false }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Кадет 2") },
+                            onClick = { cadetPickerOpen = false }
+                        )
+                    }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(stringResource(R.string.cadet))
                         Icon(
@@ -144,17 +174,12 @@ fun EventEditDialog(
                             .weight(1f)
                             .clickable {
                                 onConfirm(
-                                    Event.fromDictionary(
-                                        mapOf(
-                                            "id" to (event?.id ?: ""),
-                                            "datetime" to Instant.ofEpochMilli(
-                                                (datePickerState.selectedDateMillis ?: 0)
-                                                        + (timePickerState.hour * 60 + timePickerState.minute)
-                                                        * 60
-                                            ).toKotlinInstant()
-                                                .toLocalDateTime(TimeZone.currentSystemDefault()),
-                                        )
-                                    )
+                                    Instant.ofEpochMilli(
+                                        (datePickerState.selectedDateMillis ?: 0)
+                                                + (timePickerState.hour * 60 + timePickerState.minute)
+                                                * 60
+                                    ).toKotlinInstant()
+                                        .toLocalDateTime(TimeZone.currentSystemDefault()),
                                 )
                                 onMainDismiss()
                             },
@@ -167,7 +192,6 @@ fun EventEditDialog(
     }
 
     if (datePickerOpen) {
-
         val onDismiss = { datePickerOpen = false }
         DatePickerDialog(
             onDismissRequest = onDismiss,
@@ -208,20 +232,5 @@ fun EventEditDialog(
                 TimePicker(timePickerState)
             }
         }
-    }
-
-    DropdownMenu(
-        expanded = cadetPickerOpen,
-        onDismissRequest = { cadetPickerOpen = false }
-    ) {
-        // TODO
-        DropdownMenuItem(
-            text = { Text("Кадет 1") },
-            onClick = { cadetPickerOpen = false }
-        )
-        DropdownMenuItem(
-            text = { Text("Кадет 2") },
-            onClick = { cadetPickerOpen = false }
-        )
     }
 }
