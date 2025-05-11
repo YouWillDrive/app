@@ -48,4 +48,9 @@
     <string name="time">Время</string>
     <string name="date">Дата</string>
     <string name="confirm_event_ask">Подтвердить занятие?</string>
+    <string name="addEventButton">Добавить событие</string>
+    <string name="edit_event">Событие…</string>
+    <string name="select_date">Выберите дату</string>
+    <string name="select_time">Выберите время</string>
+    <string name="select_cadet">Выберите курсанта</string>
 </resources>

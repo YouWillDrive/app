@@ -1,5 +1,7 @@
 package ru.gd_alt.youwilldrive.models
 
+import ru.gd_alt.youwilldrive.data.client.Connection
+
 class Instructor(override val id: String) : Participant {
     companion object: ModelCompanion<Instructor> {
         override val tableName: String = "instructor"
@@ -15,5 +17,25 @@ class Instructor(override val id: String) : Participant {
 
     suspend fun cars(): MutableList<Car> {
         return fetchRelatedList<Car>("has_car", Car::fromId)
+    }
+
+    suspend fun cadets() : MutableList<Cadet> {
+        val assignedPlanPointsMaps = (Connection.cl.query("SELECT * FROM ${id}<-assigned_instructor<-plan_history") as List<Map<String, Any?>>).map { planPoint -> (PlanHistoryPoint::fromId)(
+            planPoint["id"].toString()
+        ) }
+
+        // Filter to get the newest plan history point for each cadet
+        val assignedPlanPoints = assignedPlanPointsMaps.groupBy { it?.ofCadet() }.map { (_, planPoints) -> planPoints.maxByOrNull { it!!.date } }
+
+        // Get the cadets from the plan history points
+        val cadets = mutableListOf<Cadet>()
+        for (planPoint in assignedPlanPoints) {
+            val cadet = planPoint?.ofCadet()
+            if (cadet != null) {
+                cadets.add(cadet)
+            }
+        }
+
+        return cadets
     }
 }

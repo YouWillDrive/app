@@ -193,10 +193,13 @@ fun CalendarScreen(
                 .weight(1f),
             events = displayedEvents,
             myRole = myRole ?: Role("x", "Кадет"),
-            onAddEvent = { eventEditOpen.value = true }
+            onAddEvent = { eventEditOpen.value = true },
+            date = LocalDate.of(currentYear, currentMonth, selectedDay ?: 1),
         ) {
             selectedEvent = it
         }
+
+        Log.d("CalendarScreen", "Selected date: ${LocalDate.of(currentYear, currentMonth, selectedDay ?: 1)}")
 
         EventEditDialog(eventEditOpen,
             LocalDateTime(
@@ -205,7 +208,6 @@ fun CalendarScreen(
             )
                 .toInstant(TimeZone.currentSystemDefault())
                 .toEpochMilliseconds())
-        Log.d("CalendarScreen", "${eventEditOpen.value}")
     }
 }
 

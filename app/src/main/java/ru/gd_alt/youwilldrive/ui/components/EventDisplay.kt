@@ -50,7 +50,9 @@ import ru.gd_alt.youwilldrive.models.Instructor
 import ru.gd_alt.youwilldrive.models.Placeholders
 import ru.gd_alt.youwilldrive.models.Role
 import ru.gd_alt.youwilldrive.models.User
+import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 
 @Composable
 fun EventDisplay(
@@ -58,8 +60,14 @@ fun EventDisplay(
     events: List<Event> = emptyList(),
     myRole: Role,
     onAddEvent: () -> Unit = {},
-    onEventSelection: (Event) -> Unit = {}
+    date: LocalDate = LocalDate.now(),
+    onEventSelection: (Event) -> Unit = {},
 ) {
+    val monthNames = listOf(
+        "января", "февраля", "марта", "апреля", "мая", "июня",
+        "июля", "августа", "сентября", "октября", "ноября", "декабря"
+    )
+
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -76,7 +84,7 @@ fun EventDisplay(
                 .padding(16.dp)
         ) {
             Text(
-                text = stringResource(R.string.events),
+                text = stringResource(R.string.events) + " ${date.dayOfMonth} ${monthNames[date.monthValue - 1]} ${date.year}",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
@@ -86,24 +94,28 @@ fun EventDisplay(
             HorizontalDivider()
             Spacer(modifier = Modifier.height(8.dp))
 
-
-
             if (events.isEmpty() && myRole.name != "Инструктор") {
-                EmptyEventsView()
+                EmptyEventsView(date = date)
             } else {
                 EventsList(events = events, myRole = myRole, onEventSelection = onEventSelection)
             }
-            EventAddItemButton(onAddEvent) // TODO: Show EventEditDialog
+
+            if (date >= LocalDate.now().plus(1L, ChronoUnit.DAYS)) {
+                EventAddItemButton(onAddEvent)
+            }
         }
     }
 }
 
 @Composable
-private fun EmptyEventsView() {
+private fun EmptyEventsView(
+    date: LocalDate = LocalDate.now(),
+    onAddEvent: () -> Unit = {}
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 24.dp),
+            .padding(vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -114,7 +126,7 @@ private fun EmptyEventsView() {
             tint = MaterialTheme.colorScheme.outline
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         Text(
             text = stringResource(R.string.no_events_planned),
@@ -154,7 +166,9 @@ private fun EventItem(event: Event, myRole: Role, onClick: (Event) -> Unit = {})
     var displayParticipant by remember { mutableStateOf<User?>(null) }
 
     Card(
-        modifier = Modifier.fillMaxWidth().clickable { onClick(event) },
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick(event) },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
@@ -256,7 +270,7 @@ private fun EventAddItemButton(onClick: () -> Unit = {}) {
             ) {
                 Icon(
                     Icons.Default.Add,
-                    "Добавить событие" // TODO: Add to resources
+                    stringResource(R.string.addEventButton)
                 )
             }
 
