@@ -46,6 +46,7 @@
     <string name="cancel">Отмена</string>
     <string name="postpone">Перенести</string>
     <string name="time">Время</string>
+    <string name="duration">Длительность</string>
     <string name="date">Дата</string>
     <string name="confirm_event_ask">Подтвердить занятие?</string>
     <string name="addEventButton">Добавить событие</string>

@@ -203,7 +203,7 @@ fun CalendarScreen(
 
         EventEditDialog(eventEditOpen,
             LocalDateTime(
-                currentYear, currentMonth, (selectedDay ?: 0) + 1,
+                currentYear, currentMonth, (selectedDay ?: 1),
                 0, 0, 0
             )
                 .toInstant(TimeZone.currentSystemDefault())

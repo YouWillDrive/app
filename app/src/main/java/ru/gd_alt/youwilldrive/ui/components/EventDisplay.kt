@@ -94,13 +94,13 @@ fun EventDisplay(
             HorizontalDivider()
             Spacer(modifier = Modifier.height(8.dp))
 
-            if (events.isEmpty() && myRole.name != "Инструктор") {
+            if (events.isEmpty()) {
                 EmptyEventsView(date = date)
             } else {
                 EventsList(events = events, myRole = myRole, onEventSelection = onEventSelection)
             }
 
-            if (date >= LocalDate.now().plus(1L, ChronoUnit.DAYS)) {
+            if (date >= LocalDate.now().plus(1L, ChronoUnit.DAYS) && myRole.name == "Инструктор") {
                 EventAddItemButton(onAddEvent)
             }
         }
@@ -109,8 +109,7 @@ fun EventDisplay(
 
 @Composable
 private fun EmptyEventsView(
-    date: LocalDate = LocalDate.now(),
-    onAddEvent: () -> Unit = {}
+    date: LocalDate = LocalDate.now()
 ) {
     Column(
         modifier = Modifier

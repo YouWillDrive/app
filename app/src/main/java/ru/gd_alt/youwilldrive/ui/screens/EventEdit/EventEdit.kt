@@ -8,8 +8,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.AlertDialog
@@ -24,6 +27,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
@@ -35,7 +40,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlinx.datetime.LocalDate
@@ -57,21 +64,23 @@ import kotlin.time.Duration.Companion.days
 @Composable
 fun EventEditDialog(
     dialogOpen: MutableState<Boolean> = remember { mutableStateOf(false) },
-    initialDateTimeMillis: Long = Instant.now().plus(Duration.ofDays(1L)).toEpochMilli(),
+    initialDateTimeMillis: Long = Instant.now().toEpochMilli(),
     onConfirm: (LocalDateTime /* TODO: Add Cadet ID/Object */) -> Unit = {},
     availableCadets: List<String> = listOf("Кадет 1", "Кадет 2", "Кадет 3")
 ) {
     if (!dialogOpen.value) return
 
     // TODO: Bind initial event properties (date, time, selected cadet) to state variables
-    val datePickerState = rememberDatePickerState()
-    datePickerState.selectedDateMillis = initialDateTimeMillis
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = Instant.ofEpochMilli(initialDateTimeMillis).plus(Duration.ofDays(1L)).toEpochMilli()
+    )
 
     val initialDateTime = Instant.ofEpochMilli(initialDateTimeMillis).toKotlinInstant().toLocalDateTime(TimeZone.currentSystemDefault())
     val timePickerState = rememberTimePickerState(
         initialHour = initialDateTime.hour,
         initialMinute = initialDateTime.minute
     )
+    var duration by remember { mutableStateOf("123") };
 
     // State for controlling dialogs/menus visibility
     var datePickerOpen by remember { mutableStateOf(false) }
@@ -86,37 +95,20 @@ fun EventEditDialog(
 
     AlertDialog(
         onDismissRequest = onMainDismiss,
-        title = { Text(stringResource(R.string.edit_event)) },
+        title = {
+            Text(
+                stringResource(R.string.edit_event)
+                + " " + kotlinx.datetime.Instant.fromEpochMilliseconds(
+                    datePickerState.selectedDateMillis ?: Instant.now().toEpochMilli() // Handle null state
+                ).toLocalDateTime(TimeZone.currentSystemDefault()).date.format(
+                    LocalDate.Format {
+                        dayOfMonth(); char('.'); monthNumber(); char('.'); year()
+                    }
+                )
+            )
+                },
         text = {
             Column {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .clickable { datePickerOpen = true }
-                        .padding(vertical = 12.dp), // Add padding for better touch target
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(stringResource(R.string.date), style = MaterialTheme.typography.bodyLarge) // Use typography
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            kotlinx.datetime.Instant.fromEpochMilliseconds(
-                                datePickerState.selectedDateMillis ?: Instant.now().toEpochMilli() // Handle null state
-                            ).toLocalDateTime(TimeZone.currentSystemDefault()).date.format(
-                                LocalDate.Format {
-                                    dayOfMonth(); char('.'); monthNumber(); char('.'); year()
-                                }
-                            ),
-                            style = MaterialTheme.typography.bodyMedium // Use typography for value
-                        )
-                        Icon(
-                            Icons.Default.ArrowDropDown,
-                            contentDescription = stringResource(R.string.select_date), // Add content description
-                            Modifier.size(24.dp) // Standard icon size
-                        )
-                    }
-                }
-
                 // Time Selection Row
                 Row(
                     Modifier
@@ -140,6 +132,28 @@ fun EventEditDialog(
                             Modifier.size(24.dp) // Standard icon size
                         )
                     }
+                }
+
+                Row(
+                    Modifier
+                        .padding(vertical = 12.dp)
+                        .fillMaxWidth(), // Add padding for better touch target
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        stringResource(R.string.duration),
+                        Modifier
+                            .weight(1f),
+                        style = MaterialTheme.typography.bodyLarge // Use typography
+                    )
+                    BasicTextField(
+                        duration,
+                        { duration = it },
+                        Modifier
+                            .weight(1f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    )
                 }
 
                 // Cadet Selection Row/Dropdown
