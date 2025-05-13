@@ -16,9 +16,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimeInput
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -42,6 +49,8 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toJavaLocalDateTime
+import kotlinx.datetime.toKotlinInstant
+import kotlinx.datetime.toLocalDateTime
 import ru.gd_alt.youwilldrive.R
 import ru.gd_alt.youwilldrive.data.DataStoreManager
 import ru.gd_alt.youwilldrive.models.Event
@@ -51,6 +60,8 @@ import ru.gd_alt.youwilldrive.ui.components.Calendar
 import ru.gd_alt.youwilldrive.ui.components.EventDisplay
 import ru.gd_alt.youwilldrive.ui.components.MonthSelector
 import ru.gd_alt.youwilldrive.ui.screens.EventEdit.EventEditDialog
+import java.time.Duration
+import java.time.Instant
 import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -74,6 +85,11 @@ fun CalendarScreen(
 
     val viewModel: CalendarViewModel = viewModel(factory = factory)
     val fetchState by viewModel.calendarState.collectAsState()
+
+    val datePickerState = rememberDatePickerState()
+    val timePickerState = rememberTimePickerState()
+    var timePickerOpen by remember { mutableStateOf(false) }
+    var datePickerOpen by remember { mutableStateOf(false) }
 
     LaunchedEffect(scope) {
         viewModel.fetchEvents()
@@ -114,9 +130,14 @@ fun CalendarScreen(
         val onDismiss = {selectedEvent = null} // TODO
         BasicAlertDialog(onDismiss) {
             Card {
-                Column(Modifier.padding(20.dp)) {
+                Column(
+                    Modifier.padding(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
                     Text(stringResource(R.string.confirm_event_ask))
+
                     Spacer(Modifier.height(20.dp))
+
                     Row(
                         Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End
@@ -133,7 +154,7 @@ fun CalendarScreen(
                             stringResource(R.string.postpone),
                             Modifier
                                 .weight(0.5f)
-                                .clickable { onDismiss() },  // TODO
+                                .clickable { datePickerOpen = true },  // TODO
                             color = MaterialTheme.colorScheme.primary,
                             textAlign = TextAlign.Center
                         )
@@ -147,6 +168,55 @@ fun CalendarScreen(
                         )
                     }
                 }
+            }
+        }
+    }
+
+    if (datePickerOpen) {
+        val onDismiss = { datePickerOpen = false }
+        DatePickerDialog(
+            onDismissRequest = onDismiss,
+            confirmButton = {
+                TextButton({
+                    timePickerOpen = true
+                    onDismiss()
+                }) {
+                    Text(stringResource(R.string.ok))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        ) {
+            DatePicker(datePickerState)
+        }
+    }
+
+    if (timePickerOpen) {
+        val onDismiss = { timePickerOpen = false }
+        DatePickerDialog(
+            onDismissRequest = onDismiss,
+            confirmButton = {
+                TextButton({
+                    selectedEvent = null
+                    onDismiss() // TODO
+                }) {
+                    Text(stringResource(R.string.ok))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        ) {
+            Box(
+                Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                TimePicker(timePickerState)
             }
         }
     }

@@ -37,6 +37,7 @@
     <string name="practice_hours">Практика</string>
     <string name="profile">Профиль</string>
     <string name="cadet">Курсант</string>
+    <string name="type">Тип</string>
     <string name="cadets">Курсанты</string>
     <string name="calendar">Календарь</string>
     <string name="invalid_credentials">Неверный логин или пароль!</string>
@@ -54,6 +55,7 @@
     <string name="select_date">Выберите дату</string>
     <string name="select_time">Выберите время</string>
     <string name="select_cadet">Выберите курсанта</string>
+    <string name="select_type">Выберите тип</string>
     <string name="no_internet_connection">Нет соединения</string>
     <string name="no_internet_connection_desc">Подключение к интернету отсутствует. Проверьте соединение и попробуйте открыть приложение снова.</string>
     <string name="error">Ошибка</string>

@@ -1,6 +1,7 @@
 package ru.gd_alt.youwilldrive.ui.screens.Calendar
 
 import android.util.Log
+import androidx.compose.ui.util.fastFilter
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
@@ -47,7 +48,13 @@ class CalendarViewModel(
             val actualUserId = userId.first { it -> !it.isNullOrEmpty() }
             try {
                 val user: User? = User.fromId(actualUserId.toString())
-                events = (user?.isCadet() ?: user?.isInstructor())?.events() ?: listOf()
+                events = (
+                    (
+                        user?.isCadet() ?: user?.isInstructor()
+                    )?.events() ?: emptyList()
+                ).fastFilter {
+                    true // TODO: Event.confirmed(); how would they find unconfirmed events tho?
+                }
                 Log.d("fetchEvent", "Loaded events: $events")
             } catch (e: Exception) {
                 error = e.message

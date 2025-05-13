@@ -1,16 +1,19 @@
 package ru.gd_alt.youwilldrive.ui.screens.EventEdit
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -42,7 +45,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlinx.datetime.LocalDate
@@ -66,7 +71,8 @@ fun EventEditDialog(
     dialogOpen: MutableState<Boolean> = remember { mutableStateOf(false) },
     initialDateTimeMillis: Long = Instant.now().toEpochMilli(),
     onConfirm: (LocalDateTime /* TODO: Add Cadet ID/Object */) -> Unit = {},
-    availableCadets: List<String> = listOf("Кадет 1", "Кадет 2", "Кадет 3")
+    availableCadets: List<String> = listOf("Кадет 1", "Кадет 2", "Кадет 3"),
+    availableTypes: List<String> = listOf("Тип 1", "Тип 2", "Тип 3")
 ) {
     if (!dialogOpen.value) return
 
@@ -80,16 +86,18 @@ fun EventEditDialog(
         initialHour = initialDateTime.hour,
         initialMinute = initialDateTime.minute
     )
-    var duration by remember { mutableStateOf("123") };
+    var duration by remember { mutableStateOf("1") };
 
     // State for controlling dialogs/menus visibility
     var datePickerOpen by remember { mutableStateOf(false) }
     var timePickerOpen by remember { mutableStateOf(false) }
     var cadetPickerOpen by remember { mutableStateOf(false) }
+    var typePickerOpen by remember { mutableStateOf(false) }
 
     // State for selected cadet
     // TODO: Bind initial selected cadet
     var selectedCadet by remember { mutableStateOf<String?>(null) }
+    var selectedType by remember { mutableStateOf<String?>(null) }
 
     val onMainDismiss = { dialogOpen.value = false }
 
@@ -137,23 +145,82 @@ fun EventEditDialog(
                 Row(
                     Modifier
                         .padding(vertical = 12.dp)
-                        .fillMaxWidth(), // Add padding for better touch target
+                        .fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         stringResource(R.string.duration),
                         Modifier
-                            .weight(1f),
+                            .weight(3f),
                         style = MaterialTheme.typography.bodyLarge // Use typography
                     )
-                    BasicTextField(
-                        duration,
-                        { duration = it },
+                    Row(
+                        Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        BasicTextField(
+                            duration,
+                            { duration = it },
+                            Modifier.weight(1f),
+                            textStyle = TextStyle(textAlign = TextAlign.Center),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                it()
+                                Spacer(
+                                    Modifier
+                                        .height(1.dp)
+                                        .background(MaterialTheme.colorScheme.primary)
+                                        .fillMaxWidth()
+                                )
+                            }
+                        }
+                        Text("ч.")
+                    }
+                }
+
+                // Type Selection Row/Dropdown
+                Box {
+                    Row(
                         Modifier
-                            .weight(1f),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                    )
+                            .fillMaxWidth()
+                            .clickable { typePickerOpen = true }
+                            .padding(vertical = 12.dp), // Add padding for better touch target
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(stringResource(R.string.type), style = MaterialTheme.typography.bodyLarge) // Use typography
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            // TODO: Display selected cadet name
+                            Text(
+                                selectedType ?: stringResource(R.string.select_type), // Show hint if none selected
+                                style = MaterialTheme.typography.bodyMedium // Use typography for value
+                            )
+                            Icon(
+                                Icons.Default.ArrowDropDown,
+                                contentDescription = stringResource(R.string.select_type), // Add content description
+                                Modifier.size(24.dp) // Standard icon size
+                            )
+                        }
+                    }
+                    DropdownMenu(
+                        expanded = typePickerOpen,
+                        onDismissRequest = { typePickerOpen = false }
+                    ) {
+                        availableTypes.forEach {
+                            DropdownMenuItem(
+                                text = { Text(it) },
+                                onClick = {
+                                    selectedType = it // TODO: Store/Use actual Type
+                                    typePickerOpen = false
+                                }
+                            )
+                        }
+                    }
                 }
 
                 // Cadet Selection Row/Dropdown
@@ -244,6 +311,7 @@ fun EventEditDialog(
             confirmButton = {
                 TextButton({
                     // TODO: The datePickerState is already updated when the user selects a date.
+                    // well then just don't use it duh
                     onDismiss()
                 }) {
                     Text(stringResource(R.string.ok))
@@ -266,6 +334,7 @@ fun EventEditDialog(
             confirmButton = {
                 TextButton({
                     // TODO: The timePickerState is already updated when the user confirms.
+                    // well then just don't use it duh
                     onDismiss()
                 }) {
                     Text(stringResource(R.string.ok))
