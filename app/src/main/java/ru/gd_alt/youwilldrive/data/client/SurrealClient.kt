@@ -501,7 +501,7 @@ class SurrealDBClient private constructor(
      * @throws SurrealDBException if SurrealDB returns an error.
      * @throws ConnectionError if the connection fails.
      */
-    suspend fun <T> insert(table: String, data: T): List<*>? {
+    suspend fun insert(table: String, data: Map<String, Any?>): List<*>? {
         // Data T must be encodable by SurrealCbor.cbor.encode.
         // If T is a data class, ensure customEnHook handles mapping it to a Map.
         return sendRpc("insert", listOf(table, data)) as? List<*>

@@ -74,4 +74,8 @@ class User(override val id: String, var avatarPhoto: String, var phoneNum: Strin
     suspend fun isInstructor(): Instructor? {
         return fetchRelatedSingle<Instructor>("is_instructor", Instructor::fromId)
     }
+
+    suspend fun notifications(): MutableList<Notification> {
+        return fetchRelatedList<Notification>("is_for", Notification::fromId, true)
+    }
 }

@@ -42,6 +42,7 @@ import kotlinx.coroutines.flow.first
 import ru.gd_alt.youwilldrive.data.DataStoreManager
 import ru.gd_alt.youwilldrive.data.client.Connection
 import ru.gd_alt.youwilldrive.data.client.ConnectionNotInitializedException
+import ru.gd_alt.youwilldrive.models.Notification
 import ru.gd_alt.youwilldrive.models.User
 import ru.gd_alt.youwilldrive.ui.components.BottomNavBar
 import ru.gd_alt.youwilldrive.ui.navigation.NavigationGraph
@@ -94,6 +95,7 @@ class MainActivity : ComponentActivity() {
                 }
                 try {
                     user = User.fromId(userId ?: "")
+                    Notification.postNotification(mapOf("title" to "hehe", "message" to "No way this is working."), userId ?: "")
                 } catch (e: ConnectionNotInitializedException) {
                     Log.e("MainActivity", "Device isn't connected to the Internet", e)
                     showNoInternetDialog = true
