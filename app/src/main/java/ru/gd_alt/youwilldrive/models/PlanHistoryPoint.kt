@@ -1,17 +1,18 @@
 package ru.gd_alt.youwilldrive.models
 
+import android.util.Log
 import kotlinx.datetime.LocalDateTime
 import java.time.Instant
 
 class PlanHistoryPoint(override val id: String, var bonusHours: Int, var date: LocalDateTime): Identifiable {
     companion object: ModelCompanion<PlanHistoryPoint> {
-        override val tableName: String = "plan_history_point"
+        override val tableName: String = "plan_history"
 
         override fun fromDictionary(dictionary: Map<*, *>): PlanHistoryPoint {
             return PlanHistoryPoint(
                 dictionary["id"]!!.toString(),
                 dictionary["bonus_hours"]!!.toString().toInt(),
-                dictionary["date"]!! as LocalDateTime
+                dictionary["date_time"]!! as LocalDateTime
             )
         }
     }

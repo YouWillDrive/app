@@ -27,6 +27,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -64,6 +66,7 @@ fun LoginScreen(navController: NavController? = null, onSuccessfulLogin: (userId
     var phoneNumber by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+    var showWrongCredentialsDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val dataStoreManager = DataStoreManager(context)
 
@@ -75,6 +78,18 @@ fun LoginScreen(navController: NavController? = null, onSuccessfulLogin: (userId
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
+        if (showWrongCredentialsDialog) {
+            AlertDialog(
+                onDismissRequest = { showWrongCredentialsDialog = false },
+                title = { Text(stringResource(id = R.string.error)) },
+                text = { Text(stringResource(id = R.string.wrong_credentials)) },
+                confirmButton = {
+                    TextButton(onClick = { showWrongCredentialsDialog = false }) {
+                        Text(stringResource(id = R.string.ok))
+                    }
+                }
+            )
+        }
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
@@ -183,7 +198,7 @@ fun LoginScreen(navController: NavController? = null, onSuccessfulLogin: (userId
                                 }
                                 else {
                                     phoneNumber = ""
-                                    password = ""
+                                    showWrongCredentialsDialog = true
                                 }
                             }
                         },

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -19,6 +20,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.runtime.LaunchedEffect
@@ -39,10 +41,12 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import ru.gd_alt.youwilldrive.data.DataStoreManager
 import ru.gd_alt.youwilldrive.data.client.Connection
+import ru.gd_alt.youwilldrive.data.client.ConnectionNotInitializedException
 import ru.gd_alt.youwilldrive.models.User
 import ru.gd_alt.youwilldrive.ui.components.BottomNavBar
 import ru.gd_alt.youwilldrive.ui.navigation.NavigationGraph
 import ru.gd_alt.youwilldrive.ui.navigation.Route
+import kotlin.system.exitProcess
 
 fun findRoute(routeId: Any?): Route? {
     val routeString = routeId as? String ?: return null
@@ -78,6 +82,7 @@ class MainActivity : ComponentActivity() {
             var startDestination by remember { mutableStateOf<Route>(Route.Login) }
             var isLoading by remember { mutableStateOf(true) }
             var user: User? by remember { mutableStateOf(null) }
+            var showNoInternetDialog by remember { mutableStateOf(false) }
 
             LaunchedEffect(key1 = dataStoreManager) {
                 val userId = dataStoreManager.getUserId().first()
@@ -87,7 +92,12 @@ class MainActivity : ComponentActivity() {
                 } else {
                     Route.Login
                 }
-                user = User.fromId(userId ?: "")
+                try {
+                    user = User.fromId(userId ?: "")
+                } catch (e: ConnectionNotInitializedException) {
+                    Log.e("MainActivity", "Device isn't connected to the Internet", e)
+                    showNoInternetDialog = true
+                }
                 isLoading = false
             }
 
@@ -102,7 +112,25 @@ class MainActivity : ComponentActivity() {
             }
 
             MaterialTheme {
-                if (isLoading) {
+                if (showNoInternetDialog) {
+                    AlertDialog(
+                        onDismissRequest = {
+                            showNoInternetDialog = false
+                            exitProcess(100)
+                        },
+                        title = { Text(stringResource(R.string.no_internet_connection)) },
+                        text = { Text(stringResource(R.string.no_internet_connection_desc)) },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                showNoInternetDialog = false
+                                exitProcess(100)
+                            }) {
+                                Text("OK")
+                            }
+                        }
+                    )
+                }
+                else if (isLoading) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
                     }

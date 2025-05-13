@@ -14,10 +14,12 @@ import androidx.core.app.NotificationManagerCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
+class ConnectionNotInitializedException(message: String) : IllegalStateException(message)
+
 object Connection {
     private var _cl: SurrealDBClient? = null
     val cl: SurrealDBClient
-        get() = _cl ?: throw IllegalStateException("Connection.cl not initialized. Call Connection.initialize(context) first.")
+        get() = _cl ?: throw ConnectionNotInitializedException("Connection.cl not initialized. Call Connection.initialize(context) first.")
 
     private const val NOTIFICATION_CHANNEL_ID = "surreal_live_updates_channel"
     private const val NOTIFICATION_CHANNEL_NAME = "SurrealDB Live Updates"

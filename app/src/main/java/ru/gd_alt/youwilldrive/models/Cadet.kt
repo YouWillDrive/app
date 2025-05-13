@@ -18,7 +18,7 @@ class Cadet(override val id: String, var hoursAlready: Int) : Participant {
     }
 
     suspend fun planHistoryPoints() : MutableList<PlanHistoryPoint> {
-        return fetchRelatedList<PlanHistoryPoint>("has_plan_points", PlanHistoryPoint::fromId, true)
+        return fetchRelatedList<PlanHistoryPoint>("of_cadet", PlanHistoryPoint::fromId, true)
     }
 
     suspend fun actualPlanPoint() : PlanHistoryPoint? {

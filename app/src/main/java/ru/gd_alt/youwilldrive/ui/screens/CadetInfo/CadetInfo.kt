@@ -54,13 +54,12 @@ fun CadetInfo(
         Box(Modifier.fillMaxWidth().fillMaxHeight(0.5f)) {
             LoadingCard()
         }
-        return
     }
 
     CadetInfoRows(
         planName = plan?.name ?: stringResource(R.string.plan),
         practiceHours = cadet.hoursAlready,
-        totalPractice = plan?.practiceHours ?: 1
+        totalPractice = plan?.practiceHours ?: 50
     )
 }
 

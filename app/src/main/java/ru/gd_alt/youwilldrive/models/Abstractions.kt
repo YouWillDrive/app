@@ -29,7 +29,15 @@ interface ModelCompanion<T : Identifiable> {
     }
 
     suspend fun fromId(id: String): T? {
-        return all().find { it.id == id }
+        Log.d("fromId", "Fetching item with ID '$id' from table '$tableName'")
+        try {
+            val result: List<*>? = ((Connection.cl.query("SELECT * FROM $id") as List<Any?>?)!![0] as Map<*, *>?)!!["result"] as List<*>?
+            return fromDictionary(result!![0] as Map<*, *>)
+        }
+        catch (e: Exception) {
+            System.err.println("Error fetching item with ID '$id' from table '$tableName': ${e.message}")
+            return null
+        }
     }
 }
 /**
@@ -62,7 +70,9 @@ suspend fun <T : Identifiable> Identifiable.fetchRelatedList(
                     val outId = linkMap[if (isChild) "in" else "out"]?.toString()
                     if (outId != null) {
                         try {
+                            Log.d("fetchRelated", "Fetching related object with ID '$outId' for link table '$linkTableName'")
                             val relatedObject = relatedFromId(outId)
+                            Log.d("fetchRelated", "Fetched related object: $relatedObject")
                             relatedObject?.let { relatedObjects.add(it) }
                         } catch (e: Exception) {
                             // Log error fetching/creating related object instance
