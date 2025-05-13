@@ -1,6 +1,7 @@
 package ru.gd_alt.youwilldrive.models
 import android.util.Log
 import ru.gd_alt.youwilldrive.data.client.Connection
+import ru.gd_alt.youwilldrive.data.models.RecordID
 
 interface Identifiable {
     val id: String
@@ -30,8 +31,9 @@ interface ModelCompanion<T : Identifiable> {
 
     suspend fun fromId(id: String): T? {
         Log.d("fromId", "Fetching item with ID '$id' from table '$tableName'")
+        val entityName = RecordID(id.split(":")[0], id.split(":")[1])
         try {
-            val result: List<*>? = ((Connection.cl.query("SELECT * FROM $id") as List<Any?>?)!![0] as Map<*, *>?)!!["result"] as List<*>?
+            val result: List<*>? = ((Connection.cl.query("SELECT * FROM \$x", mapOf("x" to entityName)) as List<Any?>?)!![0] as Map<*, *>?)!!["result"] as List<*>?
             return fromDictionary(result!![0] as Map<*, *>)
         }
         catch (e: Exception) {
