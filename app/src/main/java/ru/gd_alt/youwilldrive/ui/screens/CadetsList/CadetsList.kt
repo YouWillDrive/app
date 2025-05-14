@@ -22,6 +22,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -45,7 +46,7 @@ import ru.gd_alt.youwilldrive.models.Placeholders.DefaultUser
 @OptIn(ExperimentalMaterial3Api::class)
 @Preview
 @Composable
-fun CadetListsScreen() {
+fun CadetListScreenPreview() {
     Scaffold(
         Modifier.fillMaxSize(),
         topBar = {
@@ -66,13 +67,13 @@ fun CadetListsScreen() {
                 .padding(it)
                 .fillMaxSize()
         ) {
-            CadetList(listOf(DefaultCadet, DefaultCadet, DefaultCadet, DefaultCadet))
+            CadetListScreen(listOf(DefaultCadet, DefaultCadet, DefaultCadet, DefaultCadet))
         }
     }
 }
 
 @Composable
-fun CadetList(cadets: List<Cadet>) {
+fun CadetListScreen(cadets: List<Cadet>) {
     Column(
         Modifier
             .padding(16.dp)
@@ -118,18 +119,22 @@ fun CadetCard(cadet: Cadet) {
                     )
                 }
                 Text(
-                    /* "${cadet.user.surname} ${cadet.user.name.first()}. ${cadet.user.patronymic.first()}.", */
-                    text = "${DefaultUser.surname} ${DefaultUser.name.first()} ${DefaultUser.patronymic.first()}",
+                    /* "${cadet.me().surname} ${cadet.me().name.first()}. ${cadet.me().patronymic.first()}.", */
+                    text = "${DefaultUser.surname} ${DefaultUser.name.first()}. ${DefaultUser.patronymic.first()}.",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
-                Icon(
-                    Icons.AutoMirrored.Filled.Message,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(26.dp)
-                )
+                IconButton(
+                    { /* TODO: Open chat */ }
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.Message,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
             }
             Row(
                 Modifier

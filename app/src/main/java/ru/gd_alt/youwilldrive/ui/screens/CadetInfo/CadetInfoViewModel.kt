@@ -9,33 +9,59 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ru.gd_alt.youwilldrive.models.Cadet
+import ru.gd_alt.youwilldrive.models.Instructor
 import ru.gd_alt.youwilldrive.models.Plan
+import ru.gd_alt.youwilldrive.models.User
 
-sealed class CadetInfoState {
-    data object Idle : CadetInfoState()
-    data object Loading : CadetInfoState()
+sealed class PlanState {
+    data object Idle : PlanState()
+    data object Loading : PlanState()
+}
+sealed class InstructorState {
+    data object Idle : InstructorState()
+    data object Loading : InstructorState()
 }
 
 class CadetInfoViewModel : ViewModel() {
-    private val _cadetInfoState = MutableStateFlow<CadetInfoState>(CadetInfoState.Loading)
-    val cadetInfoState = _cadetInfoState.asStateFlow()
+    private val _planState = MutableStateFlow<PlanState>(PlanState.Loading)
+    val planState = _planState.asStateFlow()
+    private val _instructorState = MutableStateFlow<InstructorState>(InstructorState.Loading)
+    val instructorState = _instructorState.asStateFlow()
 
     fun fetchPlan(cadet: Cadet, onResponse: (Plan?, String?) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
-            _cadetInfoState.value = CadetInfoState.Loading
+            _planState.value = PlanState.Loading
             var plan: Plan? = null
             var error: String? = null
             try {
                 plan = cadet.actualPlanPoint()?.relatedPlan()
-                Log.d("fetchData", "Loaded plan: $plan")
+                Log.d("fetchPlan", "Loaded plan: $plan")
             } catch (e: Exception) {
                 error = e.message
             }
             withContext(Dispatchers.Main) {
                 onResponse(plan, error)
-                _cadetInfoState.value = CadetInfoState.Idle
+                _planState.value = PlanState.Idle
             }
         }
+    }
 
+    fun fetchInstructorUser(cadet: Cadet, onResponse: (User?, String?) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            _instructorState.value = InstructorState.Loading
+            var instructor: User? = null
+            var error: String? = null
+
+            try {
+                instructor = cadet.actualPlanPoint()?.assignedInstructor()?.me()
+                Log.d("fetchInstructor", "Loaded instructor: $instructor")
+            } catch (e: Exception) {
+                error = e.message
+            }
+            withContext(Dispatchers.Main) {
+                onResponse(instructor, error)
+                _planState.value = PlanState.Idle
+            }
+        }
     }
 }
