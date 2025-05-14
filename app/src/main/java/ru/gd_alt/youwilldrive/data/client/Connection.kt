@@ -117,13 +117,6 @@ object Connection {
                                 Log.d("SurrealLiveQuery", "Pending Notification Data: $pendingNotificationData")
                                 val notification =
                                     Notification.fromDictionary(pendingNotificationData["notification"] as Map<String, Any?>)
-                                val user =
-                                    User.fromDictionary(pendingNotificationData["receiver"] as Map<String, Any?>)
-
-                                if (user.id != myId) {
-                                    Log.i("SurrealLiveQuery", "Notification is not for me. Skipping.")
-                                    continue
-                                }
 
                                 if (notification.received) {
                                     Log.i("SurrealLiveQuery", "Notification already received. Skipping.")

@@ -60,4 +60,6 @@
     <string name="no_internet_connection_desc">Подключение к интернету отсутствует. Проверьте соединение и попробуйте открыть приложение снова.</string>
     <string name="error">Ошибка</string>
     <string name="wrong_credentials">Неверные данные. Перепроверьте номер телефона, пароль и попробуйте снова.</string>
+    <string name="unread">Непрочитанные</string>
+    <string name="read_notifications">Прочитанные</string>
 </resources>

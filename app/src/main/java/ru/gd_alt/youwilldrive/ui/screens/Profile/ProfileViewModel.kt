@@ -22,7 +22,7 @@ sealed class ProfileState {
 }
 
 class ProfileViewModel(
-    private val dataStoreManager: DataStoreManager
+    dataStoreManager: DataStoreManager
 ): ViewModel() {
     private val _profileState = MutableStateFlow<ProfileState>(ProfileState.Loading)
     val profileState = _profileState.asStateFlow()

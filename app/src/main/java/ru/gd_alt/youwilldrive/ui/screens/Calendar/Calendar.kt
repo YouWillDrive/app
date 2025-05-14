@@ -45,6 +45,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
@@ -253,7 +254,7 @@ fun CalendarScreen(
         var myRole by remember { mutableStateOf<Role?>(null) }
 
         LaunchedEffect(Unit) {
-            myRole = User.fromId(dataStoreManager.getUserId().first()!!)!!.role()
+            myRole = User.fromId(dataStoreManager.getUserId().firstOrNull().toString())?.role()
         }
 
         // Events display at the bottom, stretching to fill remaining space

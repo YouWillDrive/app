@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -44,7 +45,7 @@ import java.time.temporal.ChronoUnit
 @Composable
 fun Notifications(
     modifier: Modifier = Modifier,
-    notifications: List<Notification> = listOf(
+    notifications: List<Notification?>? = listOf(
         Notification(
             "123123123",
             "Вам назначен экзамен в ГИБДД",
@@ -67,14 +68,14 @@ fun Notifications(
             "…чем больше вы спите за рулем, тем больше у вас сил для вождения.",
             listOf(),
             LocalDateTime.now().minus(1, ChronoUnit.DAYS),
-            false, true
+            false, false
         ),
     )
 ) {
-    if (notifications.isEmpty()) {
+    if (notifications.isNullOrEmpty()) {
         EmptyNotificationsView()
     } else {
-        NotificationsList(notifications = notifications.sortedByDescending { it.dateSent })
+        NotificationsList(notifications = notifications.filter { it != null }.sortedByDescending { it!!.dateSent })
     }
 }
 
@@ -105,15 +106,22 @@ private fun EmptyNotificationsView() {
 }
 
 @Composable
-private fun NotificationsList(notifications: List<Notification>) {
+private fun NotificationsList(notifications: List<Notification?>) {
+    val verticalArrangement = if (notifications.isEmpty()) {
+        Arrangement.Center
+    } else {
+        Arrangement.spacedBy(8.dp)
+    }
+
     LazyColumn(
         Modifier
             .fillMaxWidth()
+            .fillMaxHeight()
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = verticalArrangement
     ) {
         items(notifications) { notification ->
-            NotificationItem(notification = notification)
+            NotificationItem(notification = notification as Notification)
         }
     }
 }
@@ -150,7 +158,13 @@ private fun NotificationItem(notification: Notification) {
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)),
+                    .background(
+                        if (!notification.read) {
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                        } else {
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                        }
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -170,7 +184,11 @@ private fun NotificationItem(notification: Notification) {
                     text = notification.title,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = if (!notification.read) {
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                    } else {
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    }
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
@@ -207,10 +225,12 @@ private fun formatDate(dateTime: LocalDateTime): String {
         }
         dateTime.toLocalDate() == now.minusDays(1).toLocalDate() -> {
             // Yesterday
-            stringResource(R.string.yesterday)
+            stringResource(R.string.yesterday) + "\n" +
+                    dateTime.format(DateTimeFormatter.ofPattern("HH:mm"))
         }
         dateTime.year == now.year -> {
-            dateTime.format(DateTimeFormatter.ofPattern("d.MM"))
+            dateTime.format(DateTimeFormatter.ofPattern("d.MM")) + "\n" +
+                    dateTime.format(DateTimeFormatter.ofPattern("HH:mm"))
         }
         else -> {
             dateTime.format(DateTimeFormatter.ofPattern("d MM yyyy"))
