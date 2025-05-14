@@ -31,6 +31,9 @@ interface ModelCompanion<T : Identifiable> {
 
     suspend fun fromId(id: String): T? {
         Log.d("fromId", "Fetching item with ID '$id' from table '$tableName'")
+        if (id.split(":").size < 2) {
+            return null
+        }
         val entityName = RecordID(id.split(":")[0], id.split(":")[1])
         try {
             val result: List<*>? = ((Connection.cl.query("SELECT * FROM \$x", mapOf("x" to entityName)) as List<Any?>?)!![0] as Map<*, *>?)!!["result"] as List<*>?
