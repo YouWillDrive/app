@@ -12,11 +12,9 @@ import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import ru.gd_alt.youwilldrive.data.DataStoreManager
-import ru.gd_alt.youwilldrive.data.models.RecordID
 import ru.gd_alt.youwilldrive.models.Notification
 import ru.gd_alt.youwilldrive.models.User
 
@@ -108,6 +106,8 @@ object Connection {
 
                         val notificationsData = (client.query(warCrime) as List<Map<String, Any>>)[0]["result"] as List<Map<String, Any?>>
 
+                        /* TODO: Optimize this query to fetch only unreceived notifications */
+
                         if (notificationsData.isEmpty()) {
                             Log.i("SurrealLiveQuery", "No unreceived notifications.")
                         } else {
@@ -123,6 +123,11 @@ object Connection {
                                     continue
                                 }
 
+                                if (notification.received) {
+                                    Log.i("SurrealLiveQuery", "Notification already received. Skipping.")
+                                    continue
+                                }
+
                                 Log.d("SurrealLiveQuery", "Pending Notification: $notification")
 
                                 val title = notification.title
@@ -131,8 +136,7 @@ object Connection {
                                     NOTIFICATION_ID_BASE + pendingNotificationData["id"].hashCode()
                                 showNotification(appContext, title, content, notificationId)
                                 notification.received = true
-                                notification.update()
-                                /* TODO: Fix Error during onConnect setup (use/liveQuery): Connection.cl not initialized. Call Connection.initialize(context) first.*/
+                                notification.update(client)
                             }
                         }
 

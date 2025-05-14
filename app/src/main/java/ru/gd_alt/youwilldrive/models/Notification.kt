@@ -3,9 +3,8 @@ package ru.gd_alt.youwilldrive.models
 import android.util.Log
 import kotlinx.datetime.toJavaLocalDateTime
 import ru.gd_alt.youwilldrive.data.client.Connection
+import ru.gd_alt.youwilldrive.data.client.SurrealDBClient
 import ru.gd_alt.youwilldrive.data.models.RecordID
-import java.time.Instant
-import java.time.LocalDate
 import java.time.LocalDateTime
 
 class Notification(override val id: String, val title: String, val message: String, val payload: List<Any?>, var dateSent: LocalDateTime, var received: Boolean, var read: Boolean) : Identifiable {
@@ -65,6 +64,27 @@ class Notification(override val id: String, val title: String, val message: Stri
      */
     suspend fun update() {
         val result = Connection.cl.query(
+            "UPDATE \$id SET title = \$title, message = \$message, payload = \$payload, date_sent = \$dateSent, received = \$received, read = \$read",
+            mapOf(
+                "id" to RecordID(id.split(":")[0], id.split(":")[1]),
+                "title" to title,
+                "message" to message,
+                "payload" to payload,
+                "dateSent" to dateSent,
+                "received" to received,
+                "read" to read
+            )
+        )
+        Log.d("Notification", "Update result: $result")
+    }
+
+    /**
+     * Updates the notification in the database, but for gentlemen caring enough to provide client.
+     * @param connection The connection to the database.
+     * @return Nothing.
+     */
+    suspend fun update(connection: SurrealDBClient) {
+        val result = connection.query(
             "UPDATE \$id SET title = \$title, message = \$message, payload = \$payload, date_sent = \$dateSent, received = \$received, read = \$read",
             mapOf(
                 "id" to RecordID(id.split(":")[0], id.split(":")[1]),
