@@ -15,6 +15,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import ru.gd_alt.youwilldrive.data.DataStoreManager
+import ru.gd_alt.youwilldrive.data.models.RecordID
 import ru.gd_alt.youwilldrive.models.Notification
 import ru.gd_alt.youwilldrive.models.User
 
@@ -104,9 +105,10 @@ object Connection {
                             return@create
                         }
 
-                        val notificationsData = (client.query(warCrime) as List<Map<String, Any>>)[0]["result"] as List<Map<String, Any?>>
-
-                        /* TODO: Optimize this query to fetch only unreceived notifications */
+                        val warCrimeRefined = "SELECT * FROM (SELECT (SELECT * FROM ->users)[0] as receiver, (SELECT * FROM <-notifications)[0] as notification FROM is_for) WHERE notification.received = false && receiver.id = \$receiverId"
+                        val notificationsData = (client.query(warCrimeRefined,
+                            mapOf("receiverId" to RecordID(myId.split(":")[0], myId.split(":")[1]))
+                        ) as List<Map<String, Any?>>)[0]["result"] as List<Map<String, Any?>>
 
                         if (notificationsData.isEmpty()) {
                             Log.i("SurrealLiveQuery", "No unreceived notifications.")
