@@ -1,5 +1,6 @@
 package ru.gd_alt.youwilldrive.data.client
 
+import android.util.Log
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -370,6 +371,7 @@ class SurrealDBClient private constructor(
     }
 
     // Core RPC sending
+    @OptIn(ExperimentalStdlibApi::class)
     private suspend fun sendRpcInternal(method: String, params: List<Any?> = emptyList()): RpcResponsePayload {
         ensureConnectedAndReady()
         val id = nextId.incrementAndGet()
@@ -377,7 +379,10 @@ class SurrealDBClient private constructor(
         val deferred = CompletableDeferred<RpcResponsePayload>()
         pendingRequests[id] = deferred
         try {
-            webSocketClient?.send(SurrealCbor.cbor.encode(req))
+            val bytes = SurrealCbor.cbor.encode(req)
+            Log.d("SurrealDBClient", "Sending RPC: $req")
+            Log.d("SurrealDBClient", "Encoded bytes: ${bytes.toHexString()}")
+            webSocketClient?.send(bytes)
         } catch (e: Exception) {
             pendingRequests.remove(id)
             val err = RuntimeException("Failed to send '$method'", e)
@@ -502,8 +507,6 @@ class SurrealDBClient private constructor(
      * @throws ConnectionError if the connection fails.
      */
     suspend fun insert(table: String, data: Map<String, Any?>): List<*>? {
-        // Data T must be encodable by SurrealCbor.cbor.encode.
-        // If T is a data class, ensure customEnHook handles mapping it to a Map.
         return sendRpc("insert", listOf(table, data)) as? List<*>
     }
 
@@ -550,8 +553,7 @@ class SurrealDBClient private constructor(
      * @throws SurrealDBException if SurrealDB returns an error.
      * @throws ConnectionError if the connection fails.
      */
-    suspend fun <T> update(entity: String, data: T): List<*>? {
-        // Data T must be encodable by SurrealCbor.cbor.encode.
+    suspend fun update(entity: String, data: Map<String, Any?>): List<*>? {
         return sendRpc("update", listOf(entity, data)) as? List<*>
     }
 
@@ -564,8 +566,7 @@ class SurrealDBClient private constructor(
      * @throws SurrealDBException if SurrealDB returns an error.
      * @throws ConnectionError if the connection fails.
      */
-    suspend fun <T> upsert(entity: String, data: T): List<*>? {
-        // Data T must be encodable by SurrealCbor.cbor.encode.
+    suspend fun upsert(entity: String, data: Map<String, Any?>): List<*>? {
         return sendRpc("upsert", listOf(entity, data)) as? List<*>
     }
 

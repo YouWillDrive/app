@@ -18,6 +18,7 @@ import kotlinx.datetime.DateTimePeriod
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
+import kotlinx.datetime.toKotlinLocalDateTime
 import kotlinx.datetime.toLocalDateTime
 import ru.gd_alt.youwilldrive.data.models.Bound
 import ru.gd_alt.youwilldrive.data.models.ExcludedBound
@@ -161,6 +162,11 @@ private val customEnHook: (Any) -> Pair<Long, Any>? = { item ->
         is LocalDateTime -> {
             val epochSeconds = item.toInstant(timeZone = TimeZone.of("Europe/Moscow")).epochSeconds
             val nanoseconds = item.toInstant(timeZone = TimeZone.of("Europe/Moscow")).nanosecondsOfSecond
+            CustomTags.TAG_DT to listOf(epochSeconds, nanoseconds)
+        }
+        is java.time.LocalDateTime -> {
+            val epochSeconds = item.toKotlinLocalDateTime().toInstant(timeZone = TimeZone.of("Europe/Moscow")).epochSeconds
+            val nanoseconds = item.toKotlinLocalDateTime().toInstant(timeZone = TimeZone.of("Europe/Moscow")).nanosecondsOfSecond
             CustomTags.TAG_DT to listOf(epochSeconds, nanoseconds)
         }
         is DateTimePeriod -> {

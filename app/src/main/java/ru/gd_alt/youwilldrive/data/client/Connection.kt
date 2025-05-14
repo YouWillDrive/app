@@ -12,7 +12,13 @@ import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import ru.gd_alt.youwilldrive.data.DataStoreManager
+import ru.gd_alt.youwilldrive.data.models.RecordID
+import ru.gd_alt.youwilldrive.models.Notification
+import ru.gd_alt.youwilldrive.models.User
 
 class ConnectionNotInitializedException(message: String) : IllegalStateException(message)
 
@@ -33,7 +39,6 @@ object Connection {
      * @param clientScope CoroutineScope tied to the lifecycle (e.g., Application scope).
      */
     fun initialize(context: Context, clientScope: CoroutineScope) {
-        // Use application context to prevent memory leaks
         val appContext = context.applicationContext
 
         // Create the notification channel (safe to call multiple times)
@@ -41,22 +46,33 @@ object Connection {
 
         // Define the live query callback using the application context
         val notificationCallback = LiveUpdateCallback.Async { liveUpdate ->
-            Log.d("SurrealLiveQuery", "Received Live Query Update: $liveUpdate") // Log received update
+            Log.d("SurrealLiveQuery", "Received a Notification: $liveUpdate")
 
-            // Extract the 'blabla' field safely
-            val blablaValue = liveUpdate.data["blabla"] as? String ?: "N/A"
-
-            val title = when (liveUpdate) {
-                is LiveQueryUpdate.Create -> "New Record Created"
-                is LiveQueryUpdate.Update -> "Record Updated"
-                is LiveQueryUpdate.Delete -> "Record Deleted"
-                is LiveQueryUpdate.Unknown -> "Unknown Update Action"
+            when (liveUpdate) {
+                is LiveQueryUpdate.Create -> {}
+                is LiveQueryUpdate.Update -> return@Async
+                is LiveQueryUpdate.Delete -> return@Async
+                is LiveQueryUpdate.Unknown -> return@Async
             }
 
-            val content = "ID: ${liveUpdate.id}\nBlabla: $blablaValue"
-            val notificationId = NOTIFICATION_ID_BASE + liveUpdate.data["id"].hashCode()
+            val notification = Notification.fromDictionary(liveUpdate.data["notification"] as Map<String, Any?>)
+            val user = User.fromDictionary(liveUpdate.data["receiver"] as Map<String, Any?>)
+            Log.d("SurrealLiveQuery", "Notification: $notification")
+            Log.d("SurrealLiveQuery", "User: $user")
 
+            val myId = DataStoreManager(appContext).getUserId().firstOrNull()
+            Log.d("SurrealLiveQuery", "My ID: $myId")
+
+            if (DataStoreManager(appContext).getUserId().firstOrNull() != user.id) {
+                return@Async
+            }
+
+            val title = notification.title
+            val content = notification.message
+            val notificationId = NOTIFICATION_ID_BASE + liveUpdate.data["id"].hashCode()
             showNotification(appContext, title, content, notificationId)
+            notification.received = true
+            notification.update()
         }
 
         clientScope.launch {
@@ -77,9 +93,49 @@ object Connection {
                         // Start the live query using the defined notificationCallback
                         // doNotReproduce = false allows the client's internal logic to restart it
                         // on subsequent reconnections within the client's restartLiveQueries method.
-                        client.liveQuery("LIVE SELECT * FROM test", null, notificationCallback, doNotReproduce = false)
-                        Log.i("SurrealLiveQuery", "Started/restarted live query for 'test' table.")
+                        val warCrime = "SELECT (SELECT * FROM ->users)[0] as receiver, (SELECT * FROM <-notifications)[0] as notification FROM is_for"
+                        client.liveQuery("LIVE $warCrime", null, notificationCallback, doNotReproduce = false)
+                        Log.i("SurrealLiveQuery", "Started/restarted live query for notifications connection table.")
                         Log.i("SurrealLiveQuery", "Waiting for live updates from test table…\n")
+                        Log.i("SurrealLiveQuery", "Fetching unreceived notifications…")
+
+                        val myId = DataStoreManager(appContext).getUserId().firstOrNull()
+
+                        if (myId == null) {
+                            Log.i("SurrealLiveQuery", "No user ID found. Not fetching unreceived notifications. Ready!")
+                            return@create
+                        }
+
+                        val notificationsData = (client.query(warCrime) as List<Map<String, Any>>)[0]["result"] as List<Map<String, Any?>>
+
+                        if (notificationsData.isEmpty()) {
+                            Log.i("SurrealLiveQuery", "No unreceived notifications.")
+                        } else {
+                            for (pendingNotificationData in notificationsData) {
+                                Log.d("SurrealLiveQuery", "Pending Notification Data: $pendingNotificationData")
+                                val notification =
+                                    Notification.fromDictionary(pendingNotificationData["notification"] as Map<String, Any?>)
+                                val user =
+                                    User.fromDictionary(pendingNotificationData["receiver"] as Map<String, Any?>)
+
+                                if (user.id != myId) {
+                                    Log.i("SurrealLiveQuery", "Notification is not for me. Skipping.")
+                                    continue
+                                }
+
+                                Log.d("SurrealLiveQuery", "Pending Notification: $notification")
+
+                                val title = notification.title
+                                val content = notification.message
+                                val notificationId =
+                                    NOTIFICATION_ID_BASE + pendingNotificationData["id"].hashCode()
+                                showNotification(appContext, title, content, notificationId)
+                                notification.received = true
+                                notification.update()
+                                /* TODO: Fix Error during onConnect setup (use/liveQuery): Connection.cl not initialized. Call Connection.initialize(context) first.*/
+                            }
+                        }
+
                     } catch (e: Exception) {
                         Log.e("SurrealLiveQuery", "Error during onConnect setup (use/liveQuery): ${e.message}", e)
                     }

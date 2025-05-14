@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
@@ -44,10 +45,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ru.gd_alt.youwilldrive.data.DataStoreManager
 import ru.gd_alt.youwilldrive.models.Cadet
 import ru.gd_alt.youwilldrive.models.Instructor
+import ru.gd_alt.youwilldrive.models.Notification
 import ru.gd_alt.youwilldrive.models.Participant
 import ru.gd_alt.youwilldrive.models.Placeholders.DefaultUser
 import ru.gd_alt.youwilldrive.models.User
@@ -75,6 +78,8 @@ fun ProfileScreen() {
     }
     userData = viewModel.userDataState.collectAsState().value
     user = viewModel.userState.collectAsState().value
+
+    val userScope = rememberCoroutineScope()
 
     Column(
         Modifier
@@ -104,6 +109,16 @@ fun ProfileScreen() {
                     InstructorInfo(userData as Instructor)
                 }
             }
+
+            Button(onClick = {
+                userScope.launch {
+                    Notification.postNotification("hehe", "No way this is working.", listOf(), user!!.id)
+                }
+            },
+                content = {
+                    Text(text = "Send notification")
+                },
+            )
         }
 
     }

@@ -95,7 +95,6 @@ class MainActivity : ComponentActivity() {
                 }
                 try {
                     user = User.fromId(userId ?: "")
-                    Notification.postNotification(mapOf("title" to "hehe", "message" to "No way this is working."), userId ?: "")
                 } catch (e: ConnectionNotInitializedException) {
                     Log.e("MainActivity", "Device isn't connected to the Internet", e)
                     showNoInternetDialog = true

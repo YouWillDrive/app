@@ -32,14 +32,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import kotlinx.datetime.DateTimePeriod
 import ru.gd_alt.youwilldrive.R
 import ru.gd_alt.youwilldrive.models.Notification
-import ru.gd_alt.youwilldrive.models.Placeholders.DefaultUser1
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 
 @Preview
 @Composable
@@ -48,23 +47,26 @@ fun Notifications(
     notifications: List<Notification> = listOf(
         Notification(
             "123123123",
-            mapOf(Pair("title", "Вам назначен экзамен в ГИБДД"),
-                  Pair("message", "Приходите на ул. Пушкина, д. Колотушкина завтра в 11:00"),),
-            Instant.now(),
+            "Вам назначен экзамен в ГИБДД",
+            "Приходите на ул. Пушкина, д. Колотушкина завтра в 11:00",
+            listOf(),
+            LocalDateTime.now(),
             true, true
         ),
         Notification(
             "234234234",
-            mapOf(Pair("title", "Перенести урок"),
-                  Pair("message", "Ваш инструктор предложил перенести занятие на 13:00 30 февраля."),),
-            Instant.now().plusSeconds(86400),
+            "Перенести урок",
+            "Ваш инструктор предложил перенести занятие на 13:00 30 февраля.",
+            listOf(),
+            LocalDateTime.now().plus(1, ChronoUnit.DAYS),
             true, true
         ),
         Notification(
             "345345345",
-            mapOf(Pair("title", "А вы знали, что…"),
-                  Pair("message", "…чем больше вы спите за рулем, тем больше у вас сил для вождения."),),
-            (Instant.now().minusSeconds(172800)),
+            "А вы знали, что…",
+            "…чем больше вы спите за рулем, тем больше у вас сил для вождения.",
+            listOf(),
+            LocalDateTime.now().minus(1, ChronoUnit.DAYS),
             false, true
         ),
     )
@@ -165,7 +167,7 @@ private fun NotificationItem(notification: Notification) {
                 modifier = Modifier.weight(0.8f)
             ) {
                 Text(
-                    text = notification.body["title"] ?: "",
+                    text = notification.title,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -174,7 +176,7 @@ private fun NotificationItem(notification: Notification) {
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = notification.body["message"] ?: "",
+                    text = notification.message,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2,
