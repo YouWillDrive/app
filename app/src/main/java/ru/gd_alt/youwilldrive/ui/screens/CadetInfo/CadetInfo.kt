@@ -1,6 +1,7 @@
 package ru.gd_alt.youwilldrive.ui.screens.CadetInfo
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,6 +41,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import ru.gd_alt.youwilldrive.R
 import ru.gd_alt.youwilldrive.models.Cadet
 import ru.gd_alt.youwilldrive.models.Placeholders.DefaultCadet
@@ -47,13 +50,15 @@ import ru.gd_alt.youwilldrive.models.Placeholders.DefaultUser
 import ru.gd_alt.youwilldrive.models.Placeholders.DefaultUser1
 import ru.gd_alt.youwilldrive.models.Plan
 import ru.gd_alt.youwilldrive.models.User
+import ru.gd_alt.youwilldrive.ui.navigation.Route
 import ru.gd_alt.youwilldrive.ui.screens.Profile.LoadingCard
 
 
 @Composable
 fun CadetInfo(
     cadet: Cadet = DefaultCadet,
-    viewModel: CadetInfoViewModel = viewModel()
+    viewModel: CadetInfoViewModel = viewModel(),
+    navController: NavController = rememberNavController()
 ) {
     val scope = rememberCoroutineScope()
     var plan: Plan? by remember { mutableStateOf(null) }
@@ -82,7 +87,7 @@ fun CadetInfo(
 
     Spacer(Modifier.height(20.dp))
 
-    InstructorCard(instructorUser ?: DefaultUser1)
+    InstructorCard(instructorUser ?: DefaultUser1) { navController.navigate(Route.Chat) }
 }
 
 @Composable
@@ -155,10 +160,11 @@ fun CadetInfoRows(
 @Preview
 @Composable
 fun InstructorCard(
-    user: User = DefaultUser
+    user: User = DefaultUser,
+    onClick: () -> Unit = {}
 ) {
     Card(
-        Modifier.fillMaxWidth(),
+        Modifier.fillMaxWidth().clickable { onClick() },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(16.dp)
     ) {
@@ -194,7 +200,7 @@ fun InstructorCard(
                     color = MaterialTheme.colorScheme.primary
                 )
                 IconButton(
-                    { /* TODO: Open chat */ }
+                    { onClick() }
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.Message,

@@ -100,7 +100,7 @@ fun CadetsListScreen(
         val user = User.fromId(dataStoreManager.getUserId().first { !it.isNullOrEmpty() } ?: "")
 
         viewModel.fetchCadets(user?.isInstructor() ?: DefaultInstructor) { data, _ ->
-//            cadets = data ?: emptyList()
+            // cadets = data ?: emptyList() // TODO: temp
         }
     }
 
@@ -158,7 +158,7 @@ fun CadetCard(cadet: Cadet, onClick: () -> Unit = {}) {
                     color = MaterialTheme.colorScheme.primary
                 )
                 IconButton(
-                    { /* TODO: Open chat */ }
+                    { onClick() }
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.Message,

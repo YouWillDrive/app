@@ -106,7 +106,7 @@ fun ProfileScreen(
 
             when (userData) {
                 is Cadet -> {
-                    CadetInfo(userData as Cadet) // TODO: Pass navController for navigation to chat
+                    CadetInfo(userData as Cadet, navController = navController)
                 }
                 is Instructor -> {
                     InstructorInfo(userData as Instructor, navController = navController)
