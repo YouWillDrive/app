@@ -36,6 +36,16 @@ sealed class Route {
     }
 
     @Serializable
+    object CadetsList : Route() {
+        override val titleId: Int = R.string.cadets
+    }
+
+    @Serializable
+    object Chat : Route() {
+        override val titleId: Int = R.string.chat
+    }
+
+    @Serializable
     object Notifications : Route() {
         override val titleId: Int = R.string.notifications
         override val iconKey: String = "notifications"

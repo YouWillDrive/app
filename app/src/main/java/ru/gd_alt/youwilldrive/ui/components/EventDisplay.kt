@@ -269,7 +269,7 @@ private fun EventAddItemButton(onClick: () -> Unit = {}) {
             ) {
                 Icon(
                     Icons.Default.Add,
-                    stringResource(R.string.addEventButton)
+                    stringResource(R.string.add_event_button)
                 )
             }
 

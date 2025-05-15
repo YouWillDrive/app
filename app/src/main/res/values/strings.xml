@@ -50,7 +50,7 @@
     <string name="duration">Длительность</string>
     <string name="date">Дата</string>
     <string name="confirm_event_ask">Подтвердить занятие?</string>
-    <string name="addEventButton">Добавить событие</string>
+    <string name="add_event_button">Добавить событие</string>
     <string name="edit_event">Событие…</string>
     <string name="select_date">Выберите дату</string>
     <string name="select_time">Выберите время</string>
@@ -62,4 +62,5 @@
     <string name="wrong_credentials">Неверные данные. Перепроверьте номер телефона, пароль и попробуйте снова.</string>
     <string name="unread">Непрочитанные</string>
     <string name="read_notifications">Прочитанные</string>
+    <string name="chat">Сообщения</string>
 </resources>

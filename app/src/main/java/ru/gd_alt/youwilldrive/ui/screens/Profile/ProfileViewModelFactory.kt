@@ -13,7 +13,6 @@ class ProfileViewModelFactory(
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ProfileViewModel::class.java)) {
-            // Create and return CalendarViewModel, passing the dependency
             return ProfileViewModel(dataStoreManager) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")

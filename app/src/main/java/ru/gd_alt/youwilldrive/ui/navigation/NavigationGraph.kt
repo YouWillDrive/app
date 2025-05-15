@@ -5,8 +5,9 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import ru.gd_alt.youwilldrive.data.DataStoreManager
+import ru.gd_alt.youwilldrive.ui.screens.CadetsList.CadetsListScreen
 import ru.gd_alt.youwilldrive.ui.screens.Calendar.CalendarScreen
+import ru.gd_alt.youwilldrive.ui.screens.Chat.ChatScreen
 import ru.gd_alt.youwilldrive.ui.screens.Login.LoginScreen
 import ru.gd_alt.youwilldrive.ui.screens.Notifications.NotificationsScreen
 import ru.gd_alt.youwilldrive.ui.screens.Profile.ProfileScreen
@@ -35,7 +36,15 @@ fun NavigationGraph(
         }
 
         composable<Route.Profile> {
-            ProfileScreen()
+            ProfileScreen(navController = navController)
+        }
+
+        composable<Route.CadetsList> {
+            CadetsListScreen(navController = navController)
+        }
+
+        composable<Route.Chat> {
+            ChatScreen()
         }
     }
 }

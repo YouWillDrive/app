@@ -1,6 +1,7 @@
 package ru.gd_alt.youwilldrive.ui.screens.InstructorInfo
 
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,6 +40,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import ru.gd_alt.youwilldrive.R
 import ru.gd_alt.youwilldrive.models.Car
 import ru.gd_alt.youwilldrive.models.Instructor
@@ -47,13 +50,15 @@ import ru.gd_alt.youwilldrive.models.Placeholders.DefaultCar2
 import ru.gd_alt.youwilldrive.models.Placeholders.DefaultCar3
 import ru.gd_alt.youwilldrive.models.Placeholders.DefaultCar4
 import ru.gd_alt.youwilldrive.models.Placeholders.DefaultInstructor
+import ru.gd_alt.youwilldrive.ui.navigation.Route
 import ru.gd_alt.youwilldrive.ui.screens.Profile.LoadingCard
 
 @Preview(showBackground = true)
 @Composable
 fun InstructorInfo(
     instructor: Instructor = DefaultInstructor,
-    viewModel: InstructorInfoViewModel = viewModel()
+    viewModel: InstructorInfoViewModel = viewModel(),
+    navController: NavController = rememberNavController()
 ) {
     val scope = rememberCoroutineScope()
     var cars: List<Car>? by remember { mutableStateOf(null) }
@@ -89,7 +94,7 @@ fun InstructorInfo(
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Row(
-                Modifier.fillMaxWidth().padding(10.dp),
+                Modifier.fillMaxWidth().padding(10.dp).clickable { navController.navigate(Route.CadetsList) },
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {

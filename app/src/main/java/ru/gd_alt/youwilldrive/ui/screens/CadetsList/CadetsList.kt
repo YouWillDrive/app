@@ -1,6 +1,7 @@
 package ru.gd_alt.youwilldrive.ui.screens.CadetsList
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,12 +12,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Message
-import androidx.compose.material.icons.filled.Message
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -30,18 +29,33 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.flow.first
 import ru.gd_alt.youwilldrive.R
+import ru.gd_alt.youwilldrive.data.DataStoreManager
 import ru.gd_alt.youwilldrive.models.Cadet
 import ru.gd_alt.youwilldrive.models.Placeholders.DefaultCadet
+import ru.gd_alt.youwilldrive.models.Placeholders.DefaultInstructor
 import ru.gd_alt.youwilldrive.models.Placeholders.DefaultUser
+import ru.gd_alt.youwilldrive.models.User
+import ru.gd_alt.youwilldrive.ui.navigation.Route
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Preview
@@ -67,28 +81,46 @@ fun CadetListScreenPreview() {
                 .padding(it)
                 .fillMaxSize()
         ) {
-            CadetListScreen(listOf(DefaultCadet, DefaultCadet, DefaultCadet, DefaultCadet))
+            CadetsListScreen()
         }
     }
 }
 
 @Composable
-fun CadetListScreen(cadets: List<Cadet>) {
+fun CadetsListScreen(
+    viewModel: CadetListsViewModel = viewModel(),
+    navController: NavController = rememberNavController()
+) {
+    val context = LocalContext.current.applicationContext
+    val dataStoreManager = remember { DataStoreManager(context) }
+    var cadets by remember { mutableStateOf(listOf(DefaultCadet, DefaultCadet, DefaultCadet, DefaultCadet)) }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(scope) {
+        val user = User.fromId(dataStoreManager.getUserId().first { !it.isNullOrEmpty() } ?: "")
+
+        viewModel.fetchCadets(user?.isInstructor() ?: DefaultInstructor) { data, _ ->
+//            cadets = data ?: emptyList()
+        }
+    }
+
     Column(
         Modifier
             .padding(16.dp)
     ) {
         for (cadet in cadets) {
-            CadetCard(cadet)
+            CadetCard(cadet) {
+                navController.navigate(Route.Chat)
+            }
             Spacer(Modifier.height(16.dp))
         }
     }
 }
 
 @Composable
-fun CadetCard(cadet: Cadet) {
+fun CadetCard(cadet: Cadet, onClick: () -> Unit = {}) {
     Card(
-        Modifier.fillMaxWidth(),
+        Modifier.fillMaxWidth().clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.secondaryContainer
         ),
