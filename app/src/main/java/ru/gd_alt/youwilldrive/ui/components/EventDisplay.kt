@@ -147,7 +147,7 @@ private fun EventsList(events: List<Event>, myRole: Role, onEventSelection: (Eve
 }
 
 @Composable
-private fun EventItem(event: Event, myRole: Role, onClick: (Event) -> Unit = {}) {
+fun EventItem(event: Event, myRole: Role, onClick: (Event) -> Unit = {}) {
     val dateTime = event.date.toJavaLocalDateTime()
 
     val eventTypeColors = mutableMapOf<String, Color>(

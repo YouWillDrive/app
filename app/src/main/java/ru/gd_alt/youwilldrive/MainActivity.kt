@@ -60,6 +60,7 @@ fun findRoute(routeId: Any?): Route? {
         Route.Notifications::class.qualifiedName -> Route.Notifications
         Route.CadetsList::class.qualifiedName -> Route.CadetsList
         Route.Chat::class.qualifiedName -> Route.Chat
+        Route.Events::class.qualifiedName -> Route.Events
         else -> {
             Log.w("MainActivity", "Could not find Route object for routeId: $routeString")
             Route.Login

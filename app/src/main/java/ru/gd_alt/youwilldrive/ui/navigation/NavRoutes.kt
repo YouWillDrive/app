@@ -51,6 +51,11 @@ sealed class Route {
         override val iconKey: String = "notifications"
     }
 
+    @Serializable
+    object Events : Route() {
+        override val titleId: Int = R.string.events
+    }
+
     companion object {
         fun getIcon(iconKey: String?): ImageVector? {
             return when (iconKey) {

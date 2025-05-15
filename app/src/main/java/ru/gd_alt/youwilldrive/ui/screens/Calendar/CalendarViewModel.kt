@@ -53,7 +53,7 @@ class CalendarViewModel(
                         user?.isCadet() ?: user?.isInstructor()
                     )?.events() ?: emptyList()
                 ).fastFilter {
-                    true // TODO: Event.confirmed(); how would they find unconfirmed events tho?
+                    true // TODO: Event.confirmed()
                 }
                 Log.d("fetchEvent", "Loaded events: $events")
             } catch (e: Exception) {

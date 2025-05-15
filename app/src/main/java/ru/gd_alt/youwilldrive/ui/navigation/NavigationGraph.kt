@@ -8,6 +8,7 @@ import androidx.navigation.compose.composable
 import ru.gd_alt.youwilldrive.ui.screens.CadetsList.CadetsListScreen
 import ru.gd_alt.youwilldrive.ui.screens.Calendar.CalendarScreen
 import ru.gd_alt.youwilldrive.ui.screens.Chat.ChatScreen
+import ru.gd_alt.youwilldrive.ui.screens.Events.EventsScreen
 import ru.gd_alt.youwilldrive.ui.screens.Login.LoginScreen
 import ru.gd_alt.youwilldrive.ui.screens.Notifications.NotificationsScreen
 import ru.gd_alt.youwilldrive.ui.screens.Profile.ProfileScreen
@@ -28,7 +29,7 @@ fun NavigationGraph(
         }
 
         composable<Route.Calendar> {
-            CalendarScreen()
+            CalendarScreen(navController = navController)
         }
 
         composable<Route.Notifications> {
@@ -45,6 +46,10 @@ fun NavigationGraph(
 
         composable<Route.Chat> {
             ChatScreen()
+        }
+
+        composable<Route.Events> {
+            EventsScreen()
         }
     }
 }
