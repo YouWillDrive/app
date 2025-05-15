@@ -63,4 +63,5 @@
     <string name="unread">Непрочитанные</string>
     <string name="read_notifications">Прочитанные</string>
     <string name="chat">Сообщения</string>
+    <string name="refresh">Обновить</string>
 </resources>

@@ -49,7 +49,7 @@ class EventEditViewModel(
             val actualUserId = userId.first { it -> !it.isNullOrEmpty() }
             try {
                 val user: User? = User.fromId(actualUserId.toString())
-                cadets = /* user?.isInstructor()?.cadets() ?: */ emptyList() // TODO
+                cadets = user?.isInstructor()?.cadets()
             } catch (e: Exception) {
                 error = e.message
             }

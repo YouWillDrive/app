@@ -100,7 +100,7 @@ fun CadetsListScreen(
         val user = User.fromId(dataStoreManager.getUserId().first { !it.isNullOrEmpty() } ?: "")
 
         viewModel.fetchCadets(user?.isInstructor() ?: DefaultInstructor) { data, _ ->
-            // cadets = data ?: emptyList() // TODO: temp
+             cadets = data ?: emptyList()
         }
     }
 

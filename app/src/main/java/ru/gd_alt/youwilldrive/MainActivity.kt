@@ -157,7 +157,7 @@ class MainActivity : ComponentActivity() {
                                         }) {
                                             Icon(
                                                 Icons.Outlined.Refresh,
-                                                "Refresh", // TODO
+                                                stringResource(R.string.refresh),
                                                 tint = MaterialTheme.colorScheme.primary
                                             )
                                         }
