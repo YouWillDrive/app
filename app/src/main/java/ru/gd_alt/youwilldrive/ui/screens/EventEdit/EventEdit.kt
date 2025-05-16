@@ -108,11 +108,9 @@ fun EventEditDialog(
                 stringResource(R.string.edit_event)
                 + " " + kotlinx.datetime.Instant.fromEpochMilliseconds(
                     datePickerState.selectedDateMillis ?: Instant.now().toEpochMilli() // Handle null state
-                ).toLocalDateTime(TimeZone.currentSystemDefault()).date.format(
-                    LocalDate.Format {
-                        dayOfMonth(); char('.'); monthNumber(); char('.'); year()
-                    }
-                )
+                ).toLocalDateTime(TimeZone.currentSystemDefault()).date.let {
+                    "${it.dayOfMonth}.${it.monthNumber}.${it.year}"
+                }
             )
                 },
         text = {
