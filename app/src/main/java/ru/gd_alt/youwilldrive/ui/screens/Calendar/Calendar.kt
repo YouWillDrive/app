@@ -16,8 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
@@ -26,14 +24,11 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DatePickerState
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TimeInput
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
@@ -59,16 +54,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.format
-import kotlinx.datetime.format.char
 import kotlinx.datetime.toInstant
+import kotlinx.datetime.toJavaLocalDate
 import kotlinx.datetime.toJavaLocalDateTime
-import kotlinx.datetime.toKotlinInstant
-import kotlinx.datetime.toKotlinLocalDateTime
+import kotlinx.datetime.toKotlinLocalDate
 import kotlinx.datetime.toLocalDateTime
 import ru.gd_alt.youwilldrive.R
 import ru.gd_alt.youwilldrive.data.DataStoreManager
@@ -80,10 +72,8 @@ import ru.gd_alt.youwilldrive.ui.components.EventDisplay
 import ru.gd_alt.youwilldrive.ui.components.MonthSelector
 import ru.gd_alt.youwilldrive.ui.navigation.Route
 import ru.gd_alt.youwilldrive.ui.screens.EventEdit.EventEditDialog
-import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
-import java.util.concurrent.TimeUnit
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true)
@@ -104,7 +94,6 @@ fun CalendarScreen(
     }
     val eventEditOpen = remember { mutableStateOf(false) }
 
-    var duration by remember { mutableStateOf("1") };
     var selectedEvent: Event? by remember { mutableStateOf(null) }
     val datePickerState = rememberDatePickerState()
     val timePickerState = rememberTimePickerState()
@@ -230,49 +219,12 @@ fun CalendarScreen(
                 it.date.toJavaLocalDateTime().isAfter(java.time.LocalDateTime.now().plusDays(1))
             } ?: false -> {
                 val date: LocalDate = (selectedEvent?.date?.toJavaLocalDateTime()?.toLocalDate() ?: LocalDate.now())
-                val onDismiss = {selectedEvent = null} // TODO
-                BasicAlertDialog(onDismiss) {
-                    Card {
-                        Column(
-                            Modifier.padding(20.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text("${date.dayOfMonth}.${date.monthValue}.${date.year}") // todo maybe
 
-                            Spacer(Modifier.height(20.dp))
-
-                            Row(
-                                Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.End
-                            ) {
-                                Text(
-                                    stringResource(R.string.cancel),
-                                    Modifier
-                                        .weight(0.5f)
-                                        .clickable { onDismiss() },
-                                    color = MaterialTheme.colorScheme.primary,
-                                    textAlign = TextAlign.Center
-                                )
-                                Text(
-                                    stringResource(R.string.cancel), // TODO: "cancel event"
-                                    Modifier
-                                        .weight(0.5f)
-                                        .clickable { onDismiss() }, // TODO
-                                    color = MaterialTheme.colorScheme.primary,
-                                    textAlign = TextAlign.Center
-                                )
-                                Text(
-                                    stringResource(R.string.postpone),
-                                    Modifier
-                                        .weight(0.5f)
-                                        .clickable { datePickerOpen = true },  // TODO
-                                    color = MaterialTheme.colorScheme.primary,
-                                    textAlign = TextAlign.Center
-                                )
-                            }
-                        }
-                    }
-                }
+                EditUpcomingEvent(
+                    date,
+                    onDismiss = {selectedEvent = null},
+                    onPostpone = {datePickerOpen = true}
+                )
             }
             selectedEvent?.let { event ->
                 event.date.toJavaLocalDateTime().let {
@@ -282,79 +234,7 @@ fun CalendarScreen(
                     )
                 }
             } ?: false -> {
-                val onMainDismiss = {selectedEvent = null}
-
-                AlertDialog(
-                    onDismissRequest = onMainDismiss,
-                    title = {
-                        Text(
-                            "Подтверждение прошедшего события " /*todo*/ + kotlinx.datetime.Instant.fromEpochMilliseconds(
-                                datePickerState.selectedDateMillis ?: Instant.now().toEpochMilli() // Handle null state
-                            ).toLocalDateTime(TimeZone.currentSystemDefault()).date.let {
-                                "${it.dayOfMonth}.${it.monthNumber}.${it.year}"
-                            }
-                        )
-                    },
-                    text = {
-                        Column {
-                            Row(
-                                Modifier
-                                    .padding(vertical = 12.dp)
-                                    .fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    stringResource(R.string.duration),
-                                    Modifier
-                                        .weight(3f),
-                                    style = MaterialTheme.typography.bodyLarge // Use typography
-                                )
-                                Row(
-                                    Modifier.weight(1f),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    BasicTextField(
-                                        duration,
-                                        { duration = it },
-                                        Modifier.weight(1f),
-                                        textStyle = TextStyle(textAlign = TextAlign.Center),
-                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                        singleLine = true
-                                    ) {
-                                        Column(
-                                            horizontalAlignment = Alignment.CenterHorizontally
-                                        ) {
-                                            it()
-                                            Spacer(
-                                                Modifier
-                                                    .height(1.dp)
-                                                    .background(MaterialTheme.colorScheme.primary)
-                                                    .fillMaxWidth()
-                                            )
-                                        }
-                                    }
-                                    Text("ч.")
-                                }
-                            }
-                        }
-                    },
-                    confirmButton = {
-                        TextButton(
-                            onClick = {
-                                // TODO
-                                onMainDismiss()
-                            }
-                        ) {
-                            Text(stringResource(R.string.ok))
-                        }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = onMainDismiss) {
-                            Text(stringResource(R.string.cancel))
-                        }
-                    }
-                )
+                ConfirmPastEvent(selectedEvent?.date?.date ?: LocalDate.now().toKotlinLocalDate()) { selectedEvent = null }
             }
         }
 
@@ -405,6 +285,128 @@ fun CalendarScreen(
                 contentAlignment = Alignment.Center
             ) {
                 TimePicker(timePickerState)
+            }
+        }
+    }
+}
+
+@Composable
+fun ConfirmPastEvent(date: kotlinx.datetime.LocalDate, onMainDismiss: () -> Unit = {}) {
+    var duration by remember { mutableStateOf("1") };
+
+    AlertDialog(
+        onDismissRequest = onMainDismiss,
+        title = {
+            Text(
+                "Подтверждение прошедшего события " /*todo*/ + date.let {
+                    "${it.dayOfMonth}.${it.monthNumber}.${it.year}"
+                }
+            )
+        },
+        text = {
+            Column {
+                Row(
+                    Modifier
+                        .padding(vertical = 12.dp)
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        stringResource(R.string.duration),
+                        Modifier
+                            .weight(3f),
+                        style = MaterialTheme.typography.bodyLarge // Use typography
+                    )
+                    Row(
+                        Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        BasicTextField(
+                            duration,
+                            { duration = it },
+                            Modifier.weight(1f),
+                            textStyle = TextStyle(textAlign = TextAlign.Center),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                it()
+                                Spacer(
+                                    Modifier
+                                        .height(1.dp)
+                                        .background(MaterialTheme.colorScheme.primary)
+                                        .fillMaxWidth()
+                                )
+                            }
+                        }
+                        Text("ч.")
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    // TODO
+                    onMainDismiss()
+                }
+            ) {
+                Text(stringResource(R.string.ok))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onMainDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EditUpcomingEvent(date: LocalDate, onDismiss: () -> Unit, onPostpone: () -> Unit) {
+    BasicAlertDialog(onDismiss) {
+        Card {
+            Column(
+                Modifier.padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("${date.dayOfMonth}.${date.monthValue}.${date.year}") // todo maybe
+
+                Spacer(Modifier.height(20.dp))
+
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Text(
+                        stringResource(R.string.cancel),
+                        Modifier
+                            .weight(0.5f)
+                            .clickable { onDismiss() },
+                        color = MaterialTheme.colorScheme.primary,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        stringResource(R.string.cancel), // TODO: "cancel event"
+                        Modifier
+                            .weight(0.5f)
+                            .clickable { onDismiss() }, // TODO
+                        color = MaterialTheme.colorScheme.primary,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        stringResource(R.string.postpone),
+                        Modifier
+                            .weight(0.5f)
+                            .clickable { onPostpone() },  // TODO
+                        color = MaterialTheme.colorScheme.primary,
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
         }
     }
