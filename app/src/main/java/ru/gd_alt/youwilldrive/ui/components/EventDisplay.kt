@@ -118,15 +118,6 @@ private fun EmptyEventsView(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Icon(
-            imageVector = Icons.Default.InsertEmoticon,
-            contentDescription = null,
-            modifier = Modifier.size(48.dp),
-            tint = MaterialTheme.colorScheme.outline
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
         Text(
             text = stringResource(R.string.no_events_planned),
             style = MaterialTheme.typography.bodyLarge,
