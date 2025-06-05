@@ -64,4 +64,7 @@
     <string name="read_notifications">Прочитанные</string>
     <string name="chat">Сообщения</string>
     <string name="refresh">Обновить</string>
+    <string name="upcoming">Предстоящие</string>
+    <string name="unconfirmed_short">Неподтвержд.</string>
+    <string name="past">Прошедшие</string>
 </resources>

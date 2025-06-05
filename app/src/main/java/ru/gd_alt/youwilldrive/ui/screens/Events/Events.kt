@@ -10,14 +10,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
@@ -25,6 +29,7 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,20 +40,31 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastFilter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toJavaLocalDate
+import kotlinx.datetime.toKotlinLocalDate
+import kotlinx.datetime.toLocalDateTime
 import ru.gd_alt.youwilldrive.R
 import ru.gd_alt.youwilldrive.data.DataStoreManager
 import ru.gd_alt.youwilldrive.models.Event
-import ru.gd_alt.youwilldrive.models.Placeholders.DefaultCadet
 import ru.gd_alt.youwilldrive.models.Placeholders.DefaultEvent
 import ru.gd_alt.youwilldrive.models.Placeholders.DefaultEvent1
 import ru.gd_alt.youwilldrive.models.Role
 import ru.gd_alt.youwilldrive.models.User
 import ru.gd_alt.youwilldrive.ui.components.EventItem
+import ru.gd_alt.youwilldrive.ui.screens.Calendar.ConfirmPastEvent
+import ru.gd_alt.youwilldrive.ui.screens.Calendar.EditUpcomingEvent
 
+@Preview
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EventsScreen() {
@@ -60,10 +76,13 @@ fun EventsScreen() {
     var myRole: Role? by remember { mutableStateOf(null) }
 
     var selectedEvent: Event? by remember { mutableStateOf(null) }
-    val datePickerState = rememberDatePickerState()
-    val timePickerState = rememberTimePickerState()
-    var timePickerOpen by remember { mutableStateOf(false) }
-    var datePickerOpen by remember { mutableStateOf(false) }
+
+    val tabs = listOf(
+        stringResource(R.string.unconfirmed_short),
+        stringResource(R.string.upcoming),
+        stringResource(R.string.past))
+    val pagerState = rememberPagerState(pageCount = { tabs.size })
+    val selectedTabIndex by remember { derivedStateOf { pagerState.currentPage } }
 
     LaunchedEffect(scope) {
         val user = User.fromId(dataStoreManager.getUserId().first { !it.isNullOrEmpty() } ?: "")
@@ -71,94 +90,166 @@ fun EventsScreen() {
                 (
                         user?.isCadet() ?: user?.isInstructor()
                         )?.events() ?: emptyList()
-                ).fastFilter {
-                true // TODO: !Event.confirmed()
-                }
+                )
 
         myRole = User.fromId(dataStoreManager.getUserId().firstOrNull().toString())?.role()
     }
 
+    Column {
+        TabRow(selectedTabIndex = selectedTabIndex) {
+            tabs.forEachIndexed { index, title ->
+                Tab(
+                    selected = selectedTabIndex == index,
+                    onClick = {
+                        scope.launch {
+                            pagerState.animateScrollToPage(index)
+                        }
+                    },
+                    text = { Text(title) }
+                )
+            }
+        }
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize()
+        ) { page ->
+            when (page) {
+                0 -> {
+                    LazyColumn(
+                        Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(events/* .filter { !it.confirmed } */) { event -> // TODO
+                            EventItem(event, myRole ?: Role("x", "Cadet")) {
+                                selectedEvent = it
+                            }
+                        }
+                    }
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            for (event in events) {
-                EventItem(event, myRole ?: Role("x", "Cadet")) {
-                    selectedEvent = it
+                    ConfirmEventDialog(selectedEvent != null, onDismiss = { selectedEvent = null }) // TODO
+                }
+                1 -> {
+                    LazyColumn(
+                        Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(
+                            events.filter { it.date < Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()) }
+                        ) { event ->
+                            EventItem(event, myRole ?: Role("x", "Cadet")) {
+                                selectedEvent = it
+                            }
+                        }
+                    }
+
+                    if (selectedEvent != null) {
+                        EditUpcomingEvent(selectedEvent?.let { it.date.date.toJavaLocalDate()} ?: java.time.LocalDate.now(),
+                            onDismiss = {
+                                selectedEvent = null
+                            }) {
+                            selectedEvent = null
+                        } // TODO ^^
+                    }
+                }
+                2 -> {
+                    LazyColumn(
+                        Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(
+                            events.filter { it.date < Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()) }
+                        ) { event ->
+                            EventItem(event, myRole ?: Role("x", "Cadet")) {
+                                selectedEvent = it
+                            }
+                        }
+                    }
+
+                    if (selectedEvent != null) {
+                        ConfirmPastEvent(selectedEvent?.let { it.date.date} ?: java.time.LocalDate.now().toKotlinLocalDate()) {
+                            selectedEvent = null
+                        } // TODO ^^
+                    }
                 }
             }
-
         }
     }
+}
 
-    if (selectedEvent != null) {
-        val onDismiss = {selectedEvent = null} // TODO
-        BasicAlertDialog(onDismiss) {
-            Card {
-                Column(
-                    Modifier.padding(20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ConfirmEventDialog(display: Boolean = false, onDismiss: () -> Unit) {
+    val datePickerState = rememberDatePickerState()
+    val timePickerState = rememberTimePickerState()
+    var timePickerOpen by remember { mutableStateOf(false) }
+    var datePickerOpen by remember { mutableStateOf(false) }
+
+    if (!display) return
+
+    BasicAlertDialog(onDismiss) {
+        Card {
+            Column(
+                Modifier.padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(stringResource(R.string.confirm_event_ask))
+
+                Spacer(Modifier.height(20.dp))
+
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
                 ) {
-                    Text(stringResource(R.string.confirm_event_ask))
-
-                    Spacer(Modifier.height(20.dp))
-
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        Text(
-                            stringResource(R.string.cancel),
-                            Modifier
-                                .weight(0.5f)
-                                .clickable { onDismiss() },
-                            color = MaterialTheme.colorScheme.primary,
-                            textAlign = TextAlign.Center
-                        )
-                        Text(
-                            stringResource(R.string.postpone),
-                            Modifier
-                                .weight(0.5f)
-                                .clickable { datePickerOpen = true },  // TODO
-                            color = MaterialTheme.colorScheme.primary,
-                            textAlign = TextAlign.Center
-                        )
-                        Text(
-                            stringResource(R.string.yes),
-                            Modifier
-                                .weight(0.5f)
-                                .clickable { onDismiss() },
-                            color = MaterialTheme.colorScheme.primary,
-                            textAlign = TextAlign.Center
-                        )
-                    }
+                    Text(
+                        stringResource(R.string.cancel),
+                        Modifier
+                            .weight(0.5f)
+                            .clickable { onDismiss() },
+                        color = MaterialTheme.colorScheme.primary,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        stringResource(R.string.postpone),
+                        Modifier
+                            .weight(0.5f)
+                            .clickable { datePickerOpen = true },  // TODO
+                        color = MaterialTheme.colorScheme.primary,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        stringResource(R.string.yes),
+                        Modifier
+                            .weight(0.5f)
+                            .clickable { onDismiss() },
+                        color = MaterialTheme.colorScheme.primary,
+                        textAlign = TextAlign.Center
+                    )
                 }
             }
         }
     }
 
     if (datePickerOpen) {
-        val onDismiss = { datePickerOpen = false }
+        val onDpDismiss = { datePickerOpen = false }
         DatePickerDialog(
-            onDismissRequest = onDismiss,
+            onDismissRequest = onDpDismiss,
             confirmButton = {
                 TextButton({
                     timePickerOpen = true
-                    onDismiss()
+                    onDpDismiss()
                 }) {
                     Text(stringResource(R.string.ok))
                 }
             },
             dismissButton = {
-                TextButton(onClick = onDismiss) {
+                TextButton(onClick = onDpDismiss) {
                     Text(stringResource(R.string.cancel))
                 }
             }
@@ -168,19 +259,19 @@ fun EventsScreen() {
     }
 
     if (timePickerOpen) {
-        val onDismiss = { timePickerOpen = false }
+        val onTpDismiss = { timePickerOpen = false }
         DatePickerDialog(
-            onDismissRequest = onDismiss,
+            onDismissRequest = onTpDismiss,
             confirmButton = {
                 TextButton({
-                    selectedEvent = null
-                    onDismiss() // TODO
+                    onDismiss()
+                    onTpDismiss() // TODO
                 }) {
                     Text(stringResource(R.string.ok))
                 }
             },
             dismissButton = {
-                TextButton(onClick = onDismiss) {
+                TextButton(onClick = onTpDismiss) {
                     Text(stringResource(R.string.cancel))
                 }
             }
@@ -193,4 +284,9 @@ fun EventsScreen() {
             }
         }
     }
+}
+
+@Composable
+fun ConfirmPastEventDialog(display: Boolean = false, onDismiss: () -> Unit) {
+
 }

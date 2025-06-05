@@ -199,7 +199,7 @@ fun CalendarScreen(
                 pressedElevation = 2.dp,
             )
         ) {
-            Text("Неподтверждённые события")
+            Text("Все события")
         }
 
         Log.d("CalendarScreen", "Selected date: ${LocalDate.of(currentYear, currentMonth, selectedDay ?: 1)}")
