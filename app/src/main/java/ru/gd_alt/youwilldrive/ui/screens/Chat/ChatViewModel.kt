@@ -1,25 +1,42 @@
 package ru.gd_alt.youwilldrive.ui.screens.Chat
 
+import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.datetime.toJavaLocalDateTime
 import ru.gd_alt.youwilldrive.data.DataStoreManager
+import ru.gd_alt.youwilldrive.models.Chat
+import ru.gd_alt.youwilldrive.models.User
+import ru.gd_alt.youwilldrive.models.fetchRelatedSingle
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import ru.gd_alt.youwilldrive.data.client.Connection
+import ru.gd_alt.youwilldrive.data.client.LiveQueryUpdate
+import ru.gd_alt.youwilldrive.data.client.LiveUpdateCallback
+import ru.gd_alt.youwilldrive.data.models.RecordID
+import ru.gd_alt.youwilldrive.models.Message
 import java.time.LocalDate
 
 class ChatViewModel(
-    dataStoreManager: DataStoreManager,
-    recepientId: String
+    private val dataStoreManager: DataStoreManager,
+    private val recepientId: String
 ) : ViewModel() {
     private val _rawMessages = MutableStateFlow<List<ChatMessage>>(emptyList())
 
     var newMessage = mutableStateOf(TextFieldValue(""))
         private set
+
+    private var liveQueryId: String? = null
 
     // StateFlow for the chat history including date separators (for UI consumption)
     val chatHistoryWithDates: StateFlow<List<ChatMessage>> = _rawMessages
@@ -31,6 +48,77 @@ class ChatViewModel(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
+
+    private val _chat = MutableStateFlow<Chat?>(null)
+    val chat: StateFlow<Chat?> = _chat.asStateFlow()
+
+    fun loadChatHistory() {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                // Get the User objects for me and the recipient
+                val myUserId = dataStoreManager.getUserId().first()
+                Log.d("ChatViewModel", "Loading chat for recipient ID: $recepientId")
+                Log.d("ChatViewModel", "My user ID: $myUserId")
+                val me = User.fromId(myUserId.toString()) ?: return@launch
+                val recipient = User.fromId(recepientId) ?: return@launch
+
+                // Find an existing chat or create a new one
+                var chatSession = Chat.byParticipants(me, recipient)
+                _chat.value = chatSession
+
+                // Load messages from the chat
+                val messagesFromDb = chatSession!!.messages()
+
+                Log.d("ChatViewModel", "Loaded messages: $messagesFromDb")
+
+                // Convert database Message models to UI ChatMessage models
+                val uiMessages = messagesFromDb.map { dbMessage ->
+                    // Determine if the message was sent or received
+                    val senderId = dbMessage.fetchRelatedSingle("sent_by", User::fromId)?.id
+                    val messageType = if (senderId == me.id) MessageType.SENT else MessageType.RECEIVED
+
+                    ChatMessage(
+                        text = dbMessage.text,
+                        type = messageType,
+                        timestamp = dbMessage.dateSent.toJavaLocalDateTime()
+                    )
+                }
+                _rawMessages.value = uiMessages.sortedBy { it.timestamp }
+
+                // Kill any previous live query before starting a new one
+                killLiveQuery()
+
+                // Start live query for new messages
+                val query = "LIVE SELECT * FROM belongs_to WHERE out = ${_chat.value!!.id}"
+                liveQueryId = Connection.cl.liveQuery(query, null, LiveUpdateCallback.Async { update ->
+                    if (update is LiveQueryUpdate.Create) {
+                        // A new 'belongs_to' relationship was created, meaning a new message arrived
+                        val messageId = (update.data["in"] as? RecordID)?.toString() ?: return@Async
+
+                        // Fetch the full message
+                        val newDbMessage = Message.fromId(messageId)
+                        if (newDbMessage != null) {
+                            // Make sure not to add our own sent message again
+                            val sender = newDbMessage.fetchRelatedSingle("sent_by", User::fromId)
+                            Log.d("ChatViewModel", "New message received: $newDbMessage from sender: $sender")
+                            val senderId = sender?.id ?: return@Async
+                            if (senderId != myUserId) {
+                                val uiMessage = ChatMessage(
+                                    text = newDbMessage.text,
+                                    type = MessageType.RECEIVED,
+                                    timestamp = newDbMessage.dateSent.toJavaLocalDateTime()
+                                )
+                                _rawMessages.value = _rawMessages.value + uiMessage
+                            }
+                        }
+                    }
+                })
+
+            } catch (e: Exception) {
+                Log.e("ChatViewModel", "Failed to load chat history", e)
+            }
+        }
+    }
 
     private fun processMessagesWithDates(messages: List<ChatMessage>): List<ChatMessage> {
         if (messages.isEmpty()) return emptyList()
@@ -55,14 +143,36 @@ class ChatViewModel(
         return processedMessages
     }
 
-    suspend fun sendMessage() {
+    fun sendMessage() {
         val text = newMessage.value.text
+        Log.i("ChatViewModel", "Attempting to send message: $text (not blank: ${text.isNotBlank()}) into ${_chat.value}")
         if (text.isNotBlank()) {
-            val newMsg = ChatMessage(text = text, type = MessageType.SENT)
-            // Add to the raw messages list
-            _rawMessages.value = _rawMessages.value + newMsg
-            // Clear the input field
-            newMessage.value = TextFieldValue("")
+            viewModelScope.launch(Dispatchers.IO) {
+                if (text.isNotBlank() && _chat.value != null) {
+                    try {
+                        val myUserId = dataStoreManager.getUserId().first()
+                        Log.d("ChatViewModel", "My user ID: $myUserId")
+
+                        val me = User.fromId(myUserId.toString()) ?: return@launch
+
+                        // 1. Create the message in the database
+                        val newDbMessage = Message.create(text)
+                        Log.d("ChatViewModel", "Created new message: $newDbMessage")
+
+                        // 2. Relate it to the current chat
+                        Chat.sendMessage(_chat.value!!, newDbMessage, me)
+
+                        val newUiMessage = ChatMessage(text, MessageType.SENT)
+                        withContext(Dispatchers.Main) {
+                            _rawMessages.value = _rawMessages.value + newUiMessage
+                            newMessage.value = TextFieldValue("") // Clear input
+                        }
+
+                    } catch(e: Exception) {
+                        Log.e("ChatViewModel", "Failed to send message", e)
+                    }
+                }
+            }
         }
     }
 
@@ -70,7 +180,21 @@ class ChatViewModel(
         newMessage.value = newValue
     }
 
-    fun receiveMessage(message: ChatMessage) {
-        _rawMessages.value = _rawMessages.value + message
+    private fun killLiveQuery() {
+        liveQueryId?.let {
+            viewModelScope.launch(Dispatchers.IO) {
+                try {
+                    Connection.cl.kill(it)
+                    Log.d("ChatViewModel", "Killed live query: $it")
+                } catch (e: Exception) {
+                    Log.e("ChatViewModel", "Failed to kill live query $it", e)
+                }
+            }
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        killLiveQuery()
     }
 }

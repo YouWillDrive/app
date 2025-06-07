@@ -40,13 +40,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
+import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.gd_alt.youwilldrive.data.DataStoreManager
 import ru.gd_alt.youwilldrive.ui.screens.Notifications.NotificationsViewModelFactory
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import java.time.temporal.ChronoUnit
+import kotlinx.coroutines.launch
 import kotlin.random.Random
 
 enum class MessageType {
@@ -181,12 +182,15 @@ fun ChatScreen(
 
     val viewModel: ChatViewModel = viewModel(factory = factory)
 
-    val chatHistory by viewModel.chatHistoryWithDates.collectAsState()
-    val newMessageValue by viewModel.newMessage
+    LaunchedEffect(Unit) {
+        viewModel.loadChatHistory()
+    }
 
-    // rawMessages holds the actual chat messages (sent/received)
+    val viewModelScope = viewModel.viewModelScope
+
+    val chatHistory by viewModel.chatHistoryWithDates.collectAsState()
+
     val rawMessages = remember { mutableStateListOf<ChatMessage>().apply { addAll(initialMessages) } }
-    // chatHistoryWithDates holds rawMessages PLUS system date messages, used for display
     val chatHistoryWithDates = remember { mutableStateListOf<ChatMessage>() }
 
     // This effect re-processes the chat history with date separators whenever rawMessages changes
@@ -206,7 +210,7 @@ fun ChatScreen(
         chatHistoryWithDates.addAll(processedMessages)
     }
 
-    var newMessage by remember { mutableStateOf(TextFieldValue("")) }
+    var newMessage by viewModel.newMessage
     val listState = rememberLazyListState()
 
     if (recepientId != null) {
@@ -241,7 +245,7 @@ fun ChatScreen(
             state = listState,
             verticalArrangement = Arrangement.spacedBy(4.dp) // Spacing between chat message items
         ) {
-            itemsIndexed(chatHistoryWithDates) { index, message ->
+            itemsIndexed(chatHistory) { index, message ->
                 ChatMessageItem(message)
             }
         }
@@ -254,19 +258,20 @@ fun ChatScreen(
         ) {
             OutlinedTextField(
                 value = newMessage,
-                onValueChange = { newMessage = it },
+                onValueChange = { viewModel.updateNewMessage(it) },
                 modifier = Modifier
                     .weight(1f)
                     .defaultMinSize(minHeight = 48.dp),
-                placeholder = { Text("Type a message...") },
+                placeholder = { Text("…") },
                 maxLines = 5,
                 shape = RoundedCornerShape(24.dp)
             )
             IconButton(
                 onClick = {
                     if (newMessage.text.isNotBlank()) {
-                        // Add new message to rawMessages, which will trigger the LaunchedEffect to update chatHistoryWithDates
-                        rawMessages.add(ChatMessage(newMessage.text, MessageType.SENT))
+                        viewModelScope.launch {
+                            viewModel.sendMessage()
+                        }
                         newMessage = TextFieldValue("")
                     }
                 },
