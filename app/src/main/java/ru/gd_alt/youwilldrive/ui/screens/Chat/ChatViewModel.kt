@@ -71,23 +71,27 @@ class ChatViewModel(
                 _chat.value = chatSession
 
                 // Load messages from the chat
-                val messagesFromDb = chatSession!!.messages()
+                val messagesFromDb = Message.allWithChatAndSender(
+                    chatSession?.id ?: return@launch)
 
                 Log.d("ChatViewModel", "Loaded messages: $messagesFromDb")
 
                 // Convert database Message models to UI ChatMessage models
                 val uiMessages = messagesFromDb.map { dbMessage ->
                     // Determine if the message was sent or received
-                    val senderId = dbMessage.fetchRelatedSingle("sent_by", User::fromId)?.id
-                    val messageType = if (senderId == me.id) MessageType.SENT else MessageType.RECEIVED
-
+                    val senderId = dbMessage.expansions["sender"]!!.toString()
+                    val messageType = if (senderId == myUserId) {
+                        MessageType.SENT
+                    } else {
+                        MessageType.RECEIVED
+                    }
                     ChatMessage(
                         text = dbMessage.text,
                         type = messageType,
                         timestamp = dbMessage.dateSent.toJavaLocalDateTime()
                     )
                 }
-                _rawMessages.value = uiMessages.sortedBy { it.timestamp }
+                _rawMessages.value = uiMessages.sortedBy { it.timestamp } as List<ChatMessage>
 
                 // Kill any previous live query before starting a new one
                 killLiveQuery()
@@ -106,14 +110,12 @@ class ChatViewModel(
                             val sender = newDbMessage.fetchRelatedSingle("sent_by", User::fromId)
                             Log.d("ChatViewModel", "New message received: $newDbMessage from sender: $sender")
                             val senderId = sender?.id ?: return@Async
-                            if (senderId != myUserId) {
-                                val uiMessage = ChatMessage(
-                                    text = newDbMessage.text,
-                                    type = MessageType.RECEIVED,
-                                    timestamp = newDbMessage.dateSent.toJavaLocalDateTime()
-                                )
-                                _rawMessages.value = _rawMessages.value + uiMessage
-                            }
+                            val uiMessage = ChatMessage(
+                                text = newDbMessage.text,
+                                type = if (senderId == myUserId) MessageType.SENT else MessageType.RECEIVED,
+                                timestamp = newDbMessage.dateSent.toJavaLocalDateTime()
+                            )
+                            _rawMessages.value = _rawMessages.value + uiMessage
                         }
                     }
                 })
@@ -166,9 +168,7 @@ class ChatViewModel(
                         // 2. Relate it to the current chat
                         Chat.sendMessage(_chat.value!!, newDbMessage, me)
 
-                        val newUiMessage = ChatMessage(text, MessageType.SENT)
                         withContext(Dispatchers.Main) {
-                            _rawMessages.value = _rawMessages.value + newUiMessage
                             newMessage.value = TextFieldValue("") // Clear input
                         }
 
