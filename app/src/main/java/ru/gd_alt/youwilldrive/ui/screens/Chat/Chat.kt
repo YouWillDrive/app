@@ -172,7 +172,7 @@ fun generatePlayfulRussianMessages(): List<ChatMessage> {
 fun ChatScreen(
     recepientId: String? = null,
     initialMessages: List<ChatMessage> = listOf<ChatMessage>(),
-    recipientName: String = "Роман"
+    recipientName: String = ""
 ) {
     val context = LocalContext.current.applicationContext
     val dataStoreManager = remember { DataStoreManager(context) }
@@ -230,7 +230,7 @@ fun ChatScreen(
 
         // Display the recipient's name at the top
         Text(
-            text = recipientName,
+            text = viewModel.recipientName.collectAsState().value.toString(),
             style = MaterialTheme.typography.labelLarge.copy(textAlign = TextAlign.Center),
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier

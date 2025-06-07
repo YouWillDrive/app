@@ -150,7 +150,11 @@ suspend fun <T : Identifiable> Identifiable.fetchRelatedSingle(
 
 interface Participant: Identifiable {
     suspend fun events() : List<Event> {
-        return fetchRelatedList("event_of_cadet", Event::fromId, true)
+        return when (this) {
+            is Cadet -> fetchRelatedList("event_of_cadet", Event::fromId, true)
+            is Instructor -> fetchRelatedList("event_of_instructor", Event::fromId, true)
+            else -> emptyList()
+        }
     }
 
     suspend fun me(): User?

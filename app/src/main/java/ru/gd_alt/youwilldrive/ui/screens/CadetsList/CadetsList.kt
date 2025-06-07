@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -19,6 +20,7 @@ import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -30,7 +32,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -39,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -47,15 +52,14 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
-import kotlinx.coroutines.flow.first
 import ru.gd_alt.youwilldrive.R
 import ru.gd_alt.youwilldrive.data.DataStoreManager
 import ru.gd_alt.youwilldrive.models.Cadet
 import ru.gd_alt.youwilldrive.models.Placeholders.DefaultCadet
-import ru.gd_alt.youwilldrive.models.Placeholders.DefaultInstructor
-import ru.gd_alt.youwilldrive.models.Placeholders.DefaultUser
 import ru.gd_alt.youwilldrive.models.User
 import ru.gd_alt.youwilldrive.ui.navigation.Route
+
+import androidx.compose.foundation.lazy.items
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Preview
@@ -88,51 +92,82 @@ fun CadetListScreenPreview() {
 
 @Composable
 fun CadetsListScreen(
-    viewModel: CadetListsViewModel = viewModel(),
     navController: NavController = rememberNavController()
 ) {
     val context = LocalContext.current.applicationContext
     val dataStoreManager = remember { DataStoreManager(context) }
-    var cadets by remember { mutableStateOf(listOf(DefaultCadet, DefaultCadet, DefaultCadet, DefaultCadet)) }
-    val scope = rememberCoroutineScope()
 
-    LaunchedEffect(scope) {
-        val user = User.fromId(dataStoreManager.getUserId().first { !it.isNullOrEmpty() } ?: "")
+    val factory = remember { CadetsListViewModelFactory(dataStoreManager) }
+    val viewModel: CadetListsViewModel = viewModel(factory = factory)
 
-        viewModel.fetchCadets(user?.isInstructor() ?: DefaultInstructor) { data, _ ->
-             cadets = data ?: emptyList()
-        }
+    val cadets by viewModel.cadets.collectAsState()
+    val listState by viewModel.cadetsListState.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.loadCadets()
     }
 
-    Column(
-        Modifier
-            .padding(16.dp)
-    ) {
-        for (cadet in cadets) {
-            CadetCard(cadet) {
-                navController.navigate(Route.Chat)
+    if (listState == CadetsListState.Loading) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(64.dp),
+                strokeWidth = 6.dp,
+                strokeCap = StrokeCap.Round
+            )
+        }
+    } else {
+        LazyColumn(
+            Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            items(cadets) { cadet ->
+                // Pass viewModel and navController to the card
+                CadetCard(cadet = cadet, viewModel = viewModel, navController = navController)
             }
-            Spacer(Modifier.height(16.dp))
         }
     }
 }
 
 @Composable
-fun CadetCard(cadet: Cadet, onClick: () -> Unit = {}) {
+fun CadetCard(cadet: Cadet, viewModel: CadetListsViewModel, navController: NavController) {
+    var cadetUser by remember { mutableStateOf<User?>(null) }
+    var planPracticeHours by remember { mutableIntStateOf(50) } // Default value
+
+    // Fetch the specific user details for this cadet when the card is composed
+    LaunchedEffect(cadet.id) {
+        viewModel.fetchCadetUser(cadet) { user, _ ->
+            cadetUser = user
+        }
+        val plan = cadet.actualPlanPoint()?.relatedPlan()
+        planPracticeHours = plan?.practiceHours ?: 50
+    }
+
+    // Function to handle navigation to chat
+    val onChatClick = {
+        cadetUser?.id?.let { userId ->
+            navController.navigate("${Route.Chat}/$userId")
+        }
+    }
+
     Card(
-        Modifier.fillMaxWidth().clickable(onClick = onClick),
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onChatClick as () -> Unit), // Make the whole card clickable
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
         ),
+        // elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(
-            Modifier.fillMaxWidth()
+            Modifier
+                .fillMaxWidth()
                 .padding(14.dp)
         ) {
             Row(
-                Modifier
-                    .fillMaxWidth(),
+                Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
@@ -150,40 +185,49 @@ fun CadetCard(cadet: Cadet, onClick: () -> Unit = {}) {
                         modifier = Modifier.size(30.dp)
                     )
                 }
+                // Display cadet's name, or "Loading..." if not yet fetched
                 Text(
-                    /* "${cadet.me().surname} ${cadet.me().name.first()}. ${cadet.me().patronymic.first()}.", */
-                    text = "${DefaultUser.surname} ${DefaultUser.name.first()}. ${DefaultUser.patronymic.first()}.",
+                    text = cadetUser?.let { "${it.surname} ${it.name.first()}. ${it.patronymic.first()}." } ?: "Загрузка...",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f).padding(horizontal = 12.dp)
                 )
-                IconButton(
-                    { onClick() }
-                ) {
+                IconButton(onClick = onChatClick) {
                     Icon(
                         Icons.AutoMirrored.Filled.Message,
-                        contentDescription = null,
+                        contentDescription = stringResource(R.string.chat),
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(26.dp)
                     )
                 }
             }
+            Spacer(modifier = Modifier.height(12.dp))
             Row(
                 Modifier
                     .fillMaxWidth()
                     .padding(vertical = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("${cadet.hoursAlready}", style = MaterialTheme.typography.bodyMedium)
-                Text("${50}", style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    text = stringResource(id = R.string.practice_hours),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    "${cadet.hoursAlready} / $planPracticeHours ч.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
             }
 
             Spacer(modifier = Modifier.height(4.dp))
 
             LinearProgressIndicator(
-                progress = { cadet.hoursAlready.toFloat() / 50.toFloat() },
+                progress = { cadet.hoursAlready.toFloat() / planPracticeHours.toFloat() },
                 modifier = Modifier.fillMaxWidth(),
-                trackColor = MaterialTheme.colorScheme.surfaceVariant
+                trackColor = MaterialTheme.colorScheme.surface,
+                color = MaterialTheme.colorScheme.primary,
+                strokeCap = StrokeCap.Round
             )
         }
     }

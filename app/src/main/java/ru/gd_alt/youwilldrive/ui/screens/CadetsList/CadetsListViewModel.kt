@@ -5,12 +5,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import ru.gd_alt.youwilldrive.data.DataStoreManager
 import ru.gd_alt.youwilldrive.models.Cadet
-import ru.gd_alt.youwilldrive.models.Instructor
-import ru.gd_alt.youwilldrive.models.Plan
 import ru.gd_alt.youwilldrive.models.User
 
 sealed class CadetsListState {
@@ -18,23 +19,35 @@ sealed class CadetsListState {
     data object Loading : CadetsListState()
 }
 
-class CadetListsViewModel : ViewModel() {
+class CadetListsViewModel(private val dataStoreManager: DataStoreManager) : ViewModel() {
     private val _cadetsListState = MutableStateFlow<CadetsListState>(CadetsListState.Loading)
     val cadetsListState = _cadetsListState.asStateFlow()
 
-    fun fetchCadets(instructor: Instructor, onResponse: (List<Cadet>?, String?) -> Unit) {
+    private val _cadets = MutableStateFlow<List<Cadet>>(emptyList())
+    val cadets: StateFlow<List<Cadet>> = _cadets.asStateFlow()
+
+    fun loadCadets() {
         viewModelScope.launch(Dispatchers.IO) {
             _cadetsListState.value = CadetsListState.Loading
-            var cadetsList: List<Cadet>? = null
-            var error: String? = null
+            val userId = dataStoreManager.getUserId().first { it != null && it.isNotEmpty() }
+
             try {
-                cadetsList = instructor.cadets()
+                val user = User.fromId(userId.toString())
+                val instructor = user?.isInstructor()
+                if (instructor != null) {
+                    val cadetsList = instructor.cadets()
+                    _cadets.value = cadetsList
+                } else {
+                    Log.w("CadetListsViewModel", "Logged in user is not an instructor.")
+                    _cadets.value = emptyList()
+                }
             } catch (e: Exception) {
-                error = e.message
-            }
-            withContext(Dispatchers.Main) {
-                onResponse(cadetsList, error)
-                _cadetsListState.value = CadetsListState.Idle
+                Log.e("CadetListsViewModel", "Failed to fetch cadets", e)
+                _cadets.value = emptyList()
+            } finally {
+                withContext(Dispatchers.Main) {
+                    _cadetsListState.value = CadetsListState.Idle
+                }
             }
         }
     }

@@ -67,4 +67,7 @@
     <string name="upcoming">Предстоящие</string>
     <string name="unconfirmed_short">Неподтвержд.</string>
     <string name="past">Прошедшие</string>
+    <string name="logout_btn">Выйти</string>
+    <string name="view_cadets_description">Просмотреть список кадетов\n</string>
+    <string name="no_cars_assigned">Нет привязанных машин</string>
 </resources>

@@ -1,6 +1,7 @@
 package ru.gd_alt.youwilldrive.ui.screens.Profile
 
 import android.util.Log
+import ru.gd_alt.youwilldrive.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
@@ -40,6 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -55,6 +58,7 @@ import ru.gd_alt.youwilldrive.models.Notification
 import ru.gd_alt.youwilldrive.models.Participant
 import ru.gd_alt.youwilldrive.models.Placeholders.DefaultUser
 import ru.gd_alt.youwilldrive.models.User
+import ru.gd_alt.youwilldrive.ui.navigation.Route
 import ru.gd_alt.youwilldrive.ui.screens.CadetInfo.CadetInfo
 import ru.gd_alt.youwilldrive.ui.screens.Calendar.CalendarViewModelFactory
 import ru.gd_alt.youwilldrive.ui.screens.Calendar.ProfileViewModelFactory
@@ -96,13 +100,12 @@ fun ProfileScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-
         if (viewModel.profileState.collectAsState().value == ProfileState.Loading)
             Box(Modifier.fillMaxWidth().fillMaxHeight(0.5f)) {
                 LoadingCard()
             }
         else {
-            Log.d("ProfileScreen", "Loaded userData. $userData")
+            Log.d("ProfileScreen", "Loaded userData.")
 
             when (userData) {
                 is Cadet -> {
@@ -113,17 +116,32 @@ fun ProfileScreen(
                 }
             }
 
-            Button(onClick = {
-                userScope.launch {
-                    Notification.postNotification("hehe", "No way this is working.", listOf(), user!!.id)
-                }
-            },
-                content = {
-                    Text(text = "Send notification")
-                },
-            )
+            Log.d("ProfileScreen", "UserData: $userData")
+            Log.d("ProfileScreen", "Page loaded successfully.")
         }
 
+        Spacer(modifier = Modifier.height(24.dp))
+        Button(
+            onClick = {
+                scope.launch {
+                    viewModel.logout()
+                    // Navigate to Login and clear the entire back stack
+                    navController.navigate(Route.Login) {
+                        popUpTo(0) { // Pops everything up to the start destination of the graph
+                            inclusive = true
+                        }
+                        launchSingleTop = true // Avoids creating multiple instances of the login screen
+                    }
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer
+            )
+        ) {
+            Text(text = stringResource(R.string.logout_btn))
+        }
     }
 }
 

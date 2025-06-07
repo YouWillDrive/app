@@ -22,7 +22,7 @@ sealed class ProfileState {
 }
 
 class ProfileViewModel(
-    dataStoreManager: DataStoreManager
+    private val dataStoreManager: DataStoreManager
 ): ViewModel() {
     private val _profileState = MutableStateFlow<ProfileState>(ProfileState.Loading)
     val profileState = _profileState.asStateFlow()
@@ -62,6 +62,12 @@ class ProfileViewModel(
                 _userState.value = user
                 _profileState.value = ProfileState.Idle
             }
+        }
+    }
+
+    fun logout() {
+        viewModelScope.launch(Dispatchers.IO) {
+            dataStoreManager.clearUserId()
         }
     }
 }

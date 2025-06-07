@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -19,11 +20,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -70,13 +74,11 @@ fun InstructorInfo(
 
     Column(
         Modifier
-            .fillMaxSize()
             .verticalScroll(rememberScrollState())
     ) {
         if (viewModel.instructorInfoState.collectAsState().value == InstructorInfoState.Loading) {
             LoadingCard()
-        }
-        else {
+        } else {
             Card(
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.fillMaxWidth(),
@@ -86,25 +88,30 @@ fun InstructorInfo(
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        Card(
-            shape = RoundedCornerShape(16.dp),
+        Button(
+            onClick = { navController.navigate(Route.CadetsList) },
             modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            shape = RoundedCornerShape(8.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            )
         ) {
             Row(
-                Modifier.fillMaxWidth().padding(10.dp).clickable { navController.navigate(Route.CadetsList) },
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     stringResource(R.string.cadets),
-                    color = MaterialTheme.colorScheme.primary
+                    fontWeight = FontWeight.Medium
                 )
-                Icon(Icons.Default.ChevronRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary)
+                Icon(
+                    Icons.Default.ChevronRight,
+                    contentDescription = stringResource(R.string.view_cadets_description),
+                )
             }
         }
     }
@@ -117,45 +124,67 @@ fun Cars(
     Column(
         Modifier
             .fillMaxWidth()
-            .padding(16.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        for (i in 0..cars.size / 2) {
-            Row(
-                Modifier
-                    .fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                for (car in cars.slice(i*2..kotlin.math.min(i*2+1, cars.size-1))) {
-                    Card(
-                        Modifier
-                            .weight(1f)
-                            .aspectRatio(1.5f).padding(5.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surface
-                        ),
-                    ) {
-                        Box(
-                            Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
+        if (cars.isEmpty()) {
+            Text(
+                text = stringResource(R.string.no_cars_assigned), // Use stringResource
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyMedium
+            )
+        } else {
+            val itemsPerRow = 2
+            val chunkedCars = cars.chunked(itemsPerRow)
+
+            chunkedCars.forEach { rowCars ->
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp) // Space between cards
+                ) {
+                    rowCars.forEachIndexed { index, car ->
+                        Card(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(4.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
                         ) {
-                            Row(
-                                Modifier
-                                    .padding(5.dp).fillMaxSize(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Absolute.Left
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(8.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
                             ) {
-                                Icon(Icons.Default.DirectionsCar,
-                                    contentDescription = null,
+                                Icon(
+                                    Icons.Default.DirectionsCar,
+                                    contentDescription = "${car.model} icon",
                                     tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(64.dp)
+                                    modifier = Modifier.size(40.dp)
                                 )
-                                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text(text="${car.model}, ${car.color}", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-                                    Text(text=car.plateNumber)
-                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "${car.model}, ${car.color}",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Center,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    maxLines = 2
+                                )
+                                Text(
+                                    text = car.plateNumber,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    textAlign = TextAlign.Center
+                                )
                             }
                         }
                     }

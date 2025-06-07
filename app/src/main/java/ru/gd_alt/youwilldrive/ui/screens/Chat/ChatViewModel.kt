@@ -52,6 +52,9 @@ class ChatViewModel(
     private val _chat = MutableStateFlow<Chat?>(null)
     val chat: StateFlow<Chat?> = _chat.asStateFlow()
 
+    private val _recipientName = MutableStateFlow<String?>(null)
+    val recipientName: StateFlow<String?> = _recipientName.asStateFlow()
+
     fun loadChatHistory() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
@@ -61,6 +64,7 @@ class ChatViewModel(
                 Log.d("ChatViewModel", "My user ID: $myUserId")
                 val me = User.fromId(myUserId.toString()) ?: return@launch
                 val recipient = User.fromId(recepientId) ?: return@launch
+                _recipientName.value = "${recipient.name} ${recipient.patronymic} ${recipient.surname}"
 
                 // Find an existing chat or create a new one
                 var chatSession = Chat.byParticipants(me, recipient)
