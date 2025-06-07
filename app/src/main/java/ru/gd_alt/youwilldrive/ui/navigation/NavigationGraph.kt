@@ -3,8 +3,10 @@ package ru.gd_alt.youwilldrive.ui.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import ru.gd_alt.youwilldrive.ui.screens.CadetsList.CadetsListScreen
 import ru.gd_alt.youwilldrive.ui.screens.Calendar.CalendarScreen
 import ru.gd_alt.youwilldrive.ui.screens.Chat.ChatScreen
@@ -46,6 +48,14 @@ fun NavigationGraph(
 
         composable<Route.Chat> {
             ChatScreen()
+        }
+
+        composable(
+            route = "${Route.Chat}/{recepientId}",
+            arguments = listOf(navArgument("recepientId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val recepientId = backStackEntry.arguments?.getString("recepientId")
+            ChatScreen(recepientId = recepientId)
         }
 
         composable<Route.Events> {

@@ -74,7 +74,9 @@ fun CadetInfo(
     }
 
     if (viewModel.planState.collectAsState().value == PlanState.Loading) {
-        Box(Modifier.fillMaxWidth().fillMaxHeight(0.5f)) {
+        Box(Modifier
+            .fillMaxWidth()
+            .fillMaxHeight(0.5f)) {
             LoadingCard()
         }
     }
@@ -87,7 +89,7 @@ fun CadetInfo(
 
     Spacer(Modifier.height(20.dp))
 
-    InstructorCard(instructorUser ?: DefaultUser1) { navController.navigate(Route.Chat) }
+    InstructorCard(instructorUser ?: DefaultUser1) { navController.navigate("${Route.Chat}/${instructorUser!!.id}") }
 }
 
 @Composable
@@ -164,12 +166,15 @@ fun InstructorCard(
     onClick: () -> Unit = {}
 ) {
     Card(
-        Modifier.fillMaxWidth().clickable { onClick() },
+        Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(
-            Modifier.fillMaxWidth()
+            Modifier
+                .fillMaxWidth()
                 .padding(14.dp)
         ) {
             Row(

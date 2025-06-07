@@ -78,4 +78,12 @@ class User(override val id: String, var avatarPhoto: String, var phoneNum: Strin
     suspend fun notifications(): MutableList<Notification> {
         return fetchRelatedList<Notification>("is_for", Notification::fromId, true)
     }
+
+    suspend fun chats(): List<Chat> {
+        return fetchRelatedList(
+            "participates",
+            Chat::fromId,
+            true
+        )
+    }
 }
