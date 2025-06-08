@@ -30,27 +30,11 @@ class User(override val id: String, var avatarPhoto: String, var phoneNum: Strin
             return password
         }
 
-        suspend fun fromPhoneNum(phoneNum: String): User? {
-            val users: List<User> = all()
-            for (user in users) {
-                if (user.phoneNum == phoneNum) {
-                    return user
-                }
-            }
-            return null
-        }
-
-        suspend fun fromEmail(email: String): User? {
-            val users: List<User> = all()
-            for (user in users) {
-                if (user.email == email) {
-                    return user
-                }
-            }
-            return null
-        }
-
         suspend fun authorize(email: String?, phone: String?, password: String): User? {
+            if (password.isEmpty() || (email == null && phone == null)) {
+                return null
+            }
+
             val users: List<User> = all()
             val passwordHash = encryptPassword(password)
 
