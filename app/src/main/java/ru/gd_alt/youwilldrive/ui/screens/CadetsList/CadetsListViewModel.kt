@@ -37,6 +37,7 @@ class CadetListsViewModel(private val dataStoreManager: DataStoreManager) : View
     private val _cadetAvatars = MutableStateFlow<Map<String, ImageBitmap?>>(emptyMap())
     val cadetAvatars: StateFlow<Map<String, ImageBitmap?>> = _cadetAvatars.asStateFlow()
 
+    @OptIn(ExperimentalEncodingApi::class)
     fun loadCadets() {
         viewModelScope.launch(Dispatchers.IO) {
             _cadetsListState.value = CadetsListState.Loading
@@ -46,16 +47,25 @@ class CadetListsViewModel(private val dataStoreManager: DataStoreManager) : View
                 val user = User.fromId(userId.toString())
                 val instructor = user?.isInstructor()
                 if (instructor != null) {
-                    val cadetsList = instructor.cadets()
-                    val avatarFetchJobs = mutableListOf<Job>()
-                    cadetsList.forEach { cadet ->
-                        val job = viewModelScope.launch(Dispatchers.IO) {
-                            fetchCadetUserAvatar(cadet)
-                            Log.d("CadetListsViewModel", "Avatar fetched for cadet: ${cadet.id}")
+                    var cadetsList = instructor.cadets()
+                    val allCadetsList = Cadet.allWithPhotos()
+
+                    cadetsList = cadetsList.map { cadet ->
+                        val fullCadet = allCadetsList.firstOrNull { it.id == cadet.id }
+                        if (fullCadet != null && fullCadet.expansions.containsKey("avatar")) {
+                            val avatarBase64 = fullCadet.expansions["avatar"].toString()
+                            val cleanedBase64String = avatarBase64.replace("\\s".toRegex(), "")
+                            val decodedBytes = Base64.decode(cleanedBase64String)
+                            val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+                            val bitmapAvatar = bitmap?.asImageBitmap()
+                            _cadetAvatars.value = (_cadetAvatars.value + (cadet.id to bitmapAvatar))
                         }
-                        avatarFetchJobs.add(job)
-                    }
-                    avatarFetchJobs.joinAll()
+                        else {
+                            _cadetAvatars.value = (_cadetAvatars.value + (cadet.id to null))
+                        }
+                        fullCadet ?: cadet
+                    }.toMutableList()
+
                     _cadets.value = cadetsList
                 } else {
                     Log.w("CadetListsViewModel", "Logged in user is not an instructor.")
@@ -85,33 +95,6 @@ class CadetListsViewModel(private val dataStoreManager: DataStoreManager) : View
             }
             withContext(Dispatchers.Main) {
                 onResponse(cadetUser, error)
-            }
-        }
-    }
-
-    @OptIn(ExperimentalEncodingApi::class)
-    fun fetchCadetUserAvatar(cadet: Cadet) {
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val user = cadet.me()
-                if (user != null) {
-                    user.avatarPhoto.let { base64String ->
-                        if (base64String.isNotBlank()) {
-                            val cleanedBase64String = base64String.replace("\\s".toRegex(), "")
-                            val decodedBytes = Base64.decode(cleanedBase64String)
-                            val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
-                            _cadetAvatars.value = _cadetAvatars.value + (user.id to bitmap?.asImageBitmap())
-                        } else {
-                            _cadetAvatars.value = _cadetAvatars.value + (user.id to null)
-                        }
-                    }
-                } else {
-                    Log.w("CadetListsViewModel", "No User found for cadet: ${cadet.id}")
-                    _cadetAvatars.value = _cadetAvatars.value + (cadet.id to null)
-                }
-            } catch (e: Exception) {
-                Log.e("CadetListsViewModel", "Error fetching/decoding avatar for cadet ${cadet.id}: ${e.message}")
-                _cadetAvatars.value = _cadetAvatars.value + (cadet.id to null)
             }
         }
     }

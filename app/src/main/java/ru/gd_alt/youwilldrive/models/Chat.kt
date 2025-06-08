@@ -1,7 +1,6 @@
 package ru.gd_alt.youwilldrive.models
 
 import ru.gd_alt.youwilldrive.data.client.Connection
-import android.util.Log
 import ru.gd_alt.youwilldrive.data.models.RecordID
 
 class Chat(override val id: String) : Identifiable {
@@ -43,21 +42,11 @@ class Chat(override val id: String) : Identifiable {
                 )
             )
 
-            Log.d("Chat", "byParticipants: Result of query: $result")
-
             if ((((result as List<*>)[0] as Map<*, *>)["result"] as List<*>).isEmpty()) {
                 return create(user1, user2)
             }
 
-            Log.d("Chat", "byParticipants: Found existing chat with $result")
-
-            Log.d("Chat", "byParticipants: Found chat with $result")
             return fromId((((result[0] as Map<*, *>)["result"] as List<*>)[0] as Map<*, *>)["id"].toString())
         }
-    }
-
-    suspend fun messages(): List<Message> {
-        Log.d("Chat", "Fetching messages for chat $id")
-        return fetchRelatedList("belongs_to", Message::fromId, isChild = true)
     }
 }

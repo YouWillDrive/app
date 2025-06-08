@@ -38,17 +38,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.gd_alt.youwilldrive.data.DataStoreManager
-import ru.gd_alt.youwilldrive.ui.screens.Notifications.NotificationsViewModelFactory
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
-import kotlin.random.Random
 
 enum class MessageType {
     SENT,
@@ -86,93 +83,11 @@ fun LocalDate.toDateString(): String {
     }
 }
 
-/**
- * Generates a list of playful Russian chat messages with varying timestamps for demonstration.
- */
-fun generatePlayfulRussianMessages(): List<ChatMessage> {
-    val messages = mutableListOf<ChatMessage>()
-    val now = LocalDateTime.now().atZone(java.time.ZoneId.systemDefault()).toLocalDateTime()
-
-    // Messages from yesterday
-    val yesterday = now.minusDays(1)
-    messages.add(
-        ChatMessage(
-            "Ты не забыл покормить резиновую уточку? Она выглядела голодной.",
-            MessageType.RECEIVED,
-            yesterday.withHour(10).withMinute(Random.nextInt(0, 59))
-        )
-    )
-    messages.add(
-        ChatMessage(
-            "Резиновая уточка замышляет мировое господство, клянусь. И нет, я снова не кормил её твоими носками.",
-            MessageType.SENT,
-            yesterday.withHour(11).withMinute(Random.nextInt(0, 59))
-        )
-    )
-    messages.add(
-        ChatMessage(
-            "Мой кот сегодня утром пытался научить тостер квантовой физике. Закончилось всё крошками и недоумением.",
-            MessageType.RECEIVED,
-            yesterday.withHour(15).withMinute(Random.nextInt(0, 59))
-        )
-    )
-
-    // Messages from today
-    val today = now
-
-    messages.add(
-        ChatMessage(
-            "Мне кажется, мой кофе только что мне подмигнул.",
-            MessageType.RECEIVED,
-            today.withHour(9).withMinute(Random.nextInt(0, 59))
-        )
-    )
-    messages.add(
-        ChatMessage(
-            "Возможно, это просто экзистенциальный ужас пробирается. Или это разумный кофе. В любом случае, доброе утро!",
-            MessageType.SENT,
-            today.withHour(9).withMinute(Random.nextInt(0, 59))
-        )
-    )
-    messages.add(
-        ChatMessage(
-            "Белки устроили рейв в саду. Мне вызвать полицию или присоединиться к ним с крошечным диско-шаром?",
-            MessageType.RECEIVED,
-            today.withHour(10).withMinute(Random.nextInt(0, 59))
-        )
-    )
-    messages.add(
-        ChatMessage(
-            "Определённо присоединяйся! Но убедись, что диско-шар биоразлагаемый. Мы заботимся об окружающей среде наших тусующихся белок.",
-            MessageType.SENT,
-            today.withHour(11).withMinute(Random.nextInt(0, 59))
-        )
-    )
-    messages.add(
-        ChatMessage(
-            "Кстати о странных происшествиях, я нашёл носочную куклу, читающую лекцию о социально-экономическом влиянии потерянных ключей от машины. Это было удивительно проницательно, хотя изложение было немного невнятным. Думаю, она пыталась завербовать другие потерянные предметы белья в свой аналитический центр. Философия ворса была особенно убедительной.",
-            MessageType.RECEIVED,
-            today.withHour(12).withMinute(Random.nextInt(0, 59))
-        )
-    )
-    messages.add(
-        ChatMessage(
-            "В данный момент я веду переговоры с особенно упрямым садовым гномом о правах на мой кабачок-чемпион. Он требует процент от урожая и крошечную корону. Какая наглость!",
-            MessageType.SENT,
-            today
-        )
-    )
-
-    // Sort messages by timestamp to ensure correct chronological order for date grouping
-    return messages.sortedBy { it.timestamp }
-}
-
 @Preview(showBackground = true)
 @Composable
 fun ChatScreen(
     recepientId: String? = null,
-    initialMessages: List<ChatMessage> = listOf<ChatMessage>(),
-    recipientName: String = ""
+    initialMessages: List<ChatMessage> = listOf<ChatMessage>()
 ) {
     val context = LocalContext.current.applicationContext
     val dataStoreManager = remember { DataStoreManager(context) }
@@ -187,31 +102,12 @@ fun ChatScreen(
     }
 
     val viewModelScope = viewModel.viewModelScope
+    val listState = rememberLazyListState()
 
     val chatHistory by viewModel.chatHistoryWithDates.collectAsState()
-
-    val rawMessages = remember { mutableStateListOf<ChatMessage>().apply { addAll(initialMessages) } }
-    val chatHistoryWithDates = remember { mutableStateListOf<ChatMessage>() }
-
-    // This effect re-processes the chat history with date separators whenever rawMessages changes
-    LaunchedEffect(rawMessages.size) { // Triggered when messages are added/removed from rawMessages
-        val processedMessages = mutableListOf<ChatMessage>()
-        var lastDate: LocalDate? = null
-
-        rawMessages.forEach { message ->
-            val messageDate = message.timestamp.toLocalDate()
-            if (messageDate != lastDate) {
-                processedMessages.add(ChatMessage(messageDate.toDateString(), MessageType.SYSTEM, message.timestamp))
-                lastDate = messageDate
-            }
-            processedMessages.add(message)
-        }
-        chatHistoryWithDates.clear()
-        chatHistoryWithDates.addAll(processedMessages)
-    }
+    val chatHistoryWithDates by viewModel.chatHistoryWithDates.collectAsState()
 
     var newMessage by viewModel.newMessage
-    val listState = rememberLazyListState()
 
     if (recepientId != null) {
         Log.i("ChatScreen", "Recipient ID: $recepientId")
