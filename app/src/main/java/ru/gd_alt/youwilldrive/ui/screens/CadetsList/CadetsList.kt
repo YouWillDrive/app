@@ -1,5 +1,7 @@
 package ru.gd_alt.youwilldrive.ui.screens.CadetsList
 
+import android.util.Log
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -60,6 +62,9 @@ import ru.gd_alt.youwilldrive.models.User
 import ru.gd_alt.youwilldrive.ui.navigation.Route
 
 import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.painter.BitmapPainter
+import androidx.compose.ui.layout.ContentScale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Preview
@@ -102,6 +107,7 @@ fun CadetsListScreen(
 
     val cadets by viewModel.cadets.collectAsState()
     val listState by viewModel.cadetsListState.collectAsState()
+    val cadetAvatars by viewModel.cadetAvatars.collectAsState()
 
     LaunchedEffect(Unit) {
         viewModel.loadCadets()
@@ -124,14 +130,19 @@ fun CadetsListScreen(
         ) {
             items(cadets) { cadet ->
                 // Pass viewModel and navController to the card
-                CadetCard(cadet = cadet, viewModel = viewModel, navController = navController)
+                CadetCard(
+                    cadet = cadet,
+                    viewModel = viewModel,
+                    navController = navController,
+                    cadetAvatar = cadetAvatars[cadet.id]
+                )
             }
         }
     }
 }
 
 @Composable
-fun CadetCard(cadet: Cadet, viewModel: CadetListsViewModel, navController: NavController) {
+fun CadetCard(cadet: Cadet, viewModel: CadetListsViewModel, navController: NavController, cadetAvatar: ImageBitmap? = null) {
     var cadetUser by remember { mutableStateOf<User?>(null) }
     var planPracticeHours by remember { mutableIntStateOf(50) } // Default value
 
@@ -154,11 +165,10 @@ fun CadetCard(cadet: Cadet, viewModel: CadetListsViewModel, navController: NavCo
     Card(
         Modifier
             .fillMaxWidth()
-            .clickable(onClick = onChatClick as () -> Unit), // Make the whole card clickable
+            .clickable(onClick = onChatClick as () -> Unit),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
         ),
-        // elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(
@@ -178,12 +188,22 @@ fun CadetCard(cadet: Cadet, viewModel: CadetListsViewModel, navController: NavCo
                         .background(MaterialTheme.colorScheme.primary),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        Icons.Default.Person,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(30.dp)
-                    )
+                    if (cadetAvatar != null) {
+                        Log.i("CadetCard", "Displaying avatar for cadet ${cadet.id}")
+                        Image(
+                            painter = BitmapPainter(cadetAvatar),
+                            contentDescription = stringResource(R.string.profile),
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Icon(
+                            Icons.Default.Person,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(30.dp)
+                        )
+                    }
                 }
                 // Display cadet's name, or "Loading..." if not yet fetched
                 Text(

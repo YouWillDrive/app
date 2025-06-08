@@ -1,5 +1,6 @@
 package ru.gd_alt.youwilldrive.ui.screens.CadetInfo
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -36,6 +38,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.painter.BitmapPainter
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -63,6 +68,7 @@ fun CadetInfo(
     val scope = rememberCoroutineScope()
     var plan: Plan? by remember { mutableStateOf(null) }
     var instructorUser: User? by remember { mutableStateOf(null) }
+    val instructorAvatarBitmap by viewModel.instructorAvatarBitmap.collectAsState()
 
     LaunchedEffect(scope) {
         viewModel.fetchInstructorUser(cadet) { data, _ ->
@@ -89,7 +95,7 @@ fun CadetInfo(
 
     Spacer(Modifier.height(20.dp))
 
-    InstructorCard(instructorUser ?: DefaultUser1) { navController.navigate("${Route.Chat}/${instructorUser!!.id}") }
+    InstructorCard(instructorUser ?: DefaultUser1, instructorAvatar = instructorAvatarBitmap) { navController.navigate("${Route.Chat}/${instructorUser!!.id}") }
 }
 
 @Composable
@@ -163,7 +169,8 @@ fun CadetInfoRows(
 @Composable
 fun InstructorCard(
     user: User = DefaultUser,
-    onClick: () -> Unit = {}
+    instructorAvatar: ImageBitmap? = null,
+    onClick: () -> Unit = {},
 ) {
     Card(
         Modifier
@@ -190,12 +197,21 @@ fun InstructorCard(
                         .background(MaterialTheme.colorScheme.primary),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        Icons.Default.Person,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(30.dp)
-                    )
+                    if (instructorAvatar != null) {
+                        Image(
+                            painter = BitmapPainter(instructorAvatar),
+                            contentDescription = stringResource(R.string.profile),
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Icon(
+                            Icons.Default.Person,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(30.dp)
+                        )
+                    }
                 }
                 Text(
                     /* "${cadet.me().surname} ${cadet.me().name.first()}. ${cadet.me().patronymic.first()}.", */
