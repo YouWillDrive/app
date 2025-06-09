@@ -1,13 +1,14 @@
 package ru.gd_alt.youwilldrive.models
 
 import android.util.Log
+import androidx.compose.runtime.clearCompositionErrors
 import kotlinx.datetime.LocalDateTime
 import ru.gd_alt.youwilldrive.data.client.Connection
 import ru.gd_alt.youwilldrive.data.models.RecordID
 import kotlin.collections.mapOf
 import ru.gd_alt.youwilldrive.data.client.SurrealDBClient
 
-class Message(override val  id: String, val text: String, val delivered: Boolean, var isRead: Boolean, val dateSent: LocalDateTime, val expansions: Map<*, *> = mapOf<String, Any?>()) : Identifiable {
+class Message(override val  id: String, val text: String, var delivered: Boolean, var isRead: Boolean, val dateSent: LocalDateTime, val expansions: Map<*, *> = mapOf<String, Any?>()) : Identifiable {
     companion object : ModelCompanion<Message> {
         override val tableName: String = "messages"
 
@@ -113,6 +114,42 @@ class Message(override val  id: String, val text: String, val delivered: Boolean
             } catch (e: Exception) {
                 Log.e("Message", "Error marking message $id as read: ${e.message}", e)
             }
+        }
+    }
+
+    suspend fun update() {
+        try {
+            val result = Connection.cl.query(
+                "UPDATE \$id SET text = \$text, delivered = \$delivered, read = \$read, date_sent = \$dateSent",
+                mapOf(
+                    "id" to RecordID(id.split(":")[0], id.split(":")[1]),
+                    "text" to text,
+                    "delivered" to delivered,
+                    "read" to isRead,
+                    "dateSent" to dateSent
+                )
+            )
+            Log.d("Message", "Updated message $id in DB: $result")
+        } catch (e: Exception) {
+            Log.e("Message", "Error updating message $id: ${e.message}", e)
+        }
+    }
+
+    suspend fun update(client: SurrealDBClient) {
+        try {
+            val result = client.query(
+                "UPDATE \$id SET text = \$text, delivered = \$delivered, read = \$read, date_sent = \$dateSent",
+                mapOf(
+                    "id" to RecordID(id.split(":")[0], id.split(":")[1]),
+                    "text" to text,
+                    "delivered" to delivered,
+                    "read" to isRead,
+                    "dateSent" to dateSent
+                )
+            )
+            Log.d("Message", "Updated message $id in DB: $result")
+        } catch (e: Exception) {
+            Log.e("Message", "Error updating message $id: ${e.message}", e)
         }
     }
 }
