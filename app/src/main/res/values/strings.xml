@@ -70,4 +70,7 @@
     <string name="logout_btn">Выйти</string>
     <string name="view_cadets_description">Просмотреть список кадетов\n</string>
     <string name="no_cars_assigned">Нет привязанных машин</string>
+    <string name="sent_on">Отправлено</string>
+    <string name="mark_as_read">Пометить как прочитанное</string>
+    <string name="close">Закрыть</string>
 </resources>

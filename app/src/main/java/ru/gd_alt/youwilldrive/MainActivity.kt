@@ -24,6 +24,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,6 +35,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.CoroutineScope
@@ -47,6 +49,8 @@ import ru.gd_alt.youwilldrive.models.User
 import ru.gd_alt.youwilldrive.ui.components.BottomNavBar
 import ru.gd_alt.youwilldrive.ui.navigation.NavigationGraph
 import ru.gd_alt.youwilldrive.ui.navigation.Route
+import ru.gd_alt.youwilldrive.ui.screens.Notifications.NotificationsViewModel
+import ru.gd_alt.youwilldrive.ui.screens.Notifications.NotificationsViewModelFactory
 import kotlin.system.exitProcess
 
 fun findRoute(routeId: Any?): Route? {
@@ -62,8 +66,13 @@ fun findRoute(routeId: Any?): Route? {
         Route.Chat::class.qualifiedName -> Route.Chat
         Route.Events::class.qualifiedName -> Route.Events
         else -> {
-            Log.w("MainActivity", "Could not find Route object for routeId: $routeString")
-            Route.Login
+            if (routeString.startsWith(Route.Chat::class.qualifiedName.toString())) {
+                Route.Chat
+            }
+            else {
+                Log.w("MainActivity", "Could not find Route object for routeId: $routeString")
+                Route.Login
+            }
         }
     }
 }
@@ -87,6 +96,11 @@ class MainActivity : ComponentActivity() {
             var isLoading by remember { mutableStateOf(true) }
             var user: User? by remember { mutableStateOf(null) }
             var showNoInternetDialog by remember { mutableStateOf(false) }
+
+            val notificationsViewModelFactory = remember { NotificationsViewModelFactory(dataStoreManager) }
+            val notificationsViewModel: NotificationsViewModel = viewModel(factory = notificationsViewModelFactory)
+            notificationsViewModel.fetchNotifications()
+            val unreadNotificationsCount by notificationsViewModel.unreadNotificationsCount.collectAsState()
 
             LaunchedEffect(key1 = dataStoreManager) {
                 val userId = dataStoreManager.getUserId().first()
@@ -175,6 +189,7 @@ class MainActivity : ComponentActivity() {
                                     navController = navController,
                                     topLevelRoutes = Route.topLevelRoutes,
                                     currentRoute = currentRouteObject,
+                                    unreadNotificationCount = unreadNotificationsCount
                                 )
                             }
                         }

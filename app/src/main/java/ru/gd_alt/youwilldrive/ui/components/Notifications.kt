@@ -1,6 +1,7 @@
 package ru.gd_alt.youwilldrive.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,11 +19,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,12 +73,13 @@ fun Notifications(
             LocalDateTime.now().minus(1, ChronoUnit.DAYS),
             false, false
         ),
-    )
+    ),
+    onNotificationClick: (Notification) -> Unit = {}
 ) {
     if (notifications.isNullOrEmpty()) {
         EmptyNotificationsView()
     } else {
-        NotificationsList(notifications = notifications.filter { it != null }.sortedByDescending { it!!.dateSent })
+        NotificationsList(notifications = notifications.filter { it != null }.sortedByDescending { it!!.dateSent }, onNotificationClick = onNotificationClick)
     }
 }
 
@@ -106,7 +110,10 @@ private fun EmptyNotificationsView() {
 }
 
 @Composable
-private fun NotificationsList(notifications: List<Notification?>) {
+private fun NotificationsList(
+    notifications: List<Notification?>,
+    onNotificationClick: (Notification) -> Unit
+) {
     val verticalArrangement = if (notifications.isEmpty()) {
         Arrangement.Center
     } else {
@@ -121,13 +128,13 @@ private fun NotificationsList(notifications: List<Notification?>) {
         verticalArrangement = verticalArrangement
     ) {
         items(notifications) { notification ->
-            NotificationItem(notification = notification as Notification)
+            NotificationItem(notification = notification as Notification, onItemClick = onNotificationClick)
         }
     }
 }
 
 @Composable
-private fun NotificationItem(notification: Notification) {
+private fun NotificationItem(notification: Notification, onItemClick: (Notification) -> Unit) {
     val dateTime = notification.dateSent
         .atZone(ZoneId.systemDefault())
         .toLocalDateTime()
@@ -141,7 +148,7 @@ private fun NotificationItem(notification: Notification) {
     }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().clickable { onItemClick(notification) },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = backgroundColor
@@ -237,6 +244,49 @@ private fun formatDate(dateTime: LocalDateTime): String {
         }
     }
 }
+
+@Composable
+fun NotificationDetailDialog(
+    notification: Notification,
+    onDismissRequest: () -> Unit,
+    onMarkAsRead: (Notification) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        title = {
+            Text(notification.title, style = MaterialTheme.typography.titleMedium)
+        },
+        text = {
+            Column {
+                Text(notification.message, style = MaterialTheme.typography.bodyMedium)
+                Spacer(modifier = Modifier.height(8.dp))
+                // Using java.time.LocalDateTime and then converting for display.
+                // Assuming notification.dateSent is java.time.LocalDateTime as per Notification.kt model.
+                Text(
+                    text = stringResource(R.string.sent_on) + ": ${formatDate(notification.dateSent)}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.outline
+                )
+            }
+        },
+        confirmButton = {
+            if (!notification.read) {
+                TextButton(onClick = {
+                    onMarkAsRead(notification)
+                    onDismissRequest() // Dismiss dialog after action
+                }) {
+                    Text(stringResource(R.string.mark_as_read))
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismissRequest) {
+                Text(stringResource(R.string.close))
+            }
+        }
+    )
+}
+
 
 @Preview(showBackground = true)
 @Composable

@@ -62,6 +62,8 @@ import ru.gd_alt.youwilldrive.models.User
 import ru.gd_alt.youwilldrive.ui.navigation.Route
 
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
@@ -108,6 +110,7 @@ fun CadetsListScreen(
     val cadets by viewModel.cadets.collectAsState()
     val listState by viewModel.cadetsListState.collectAsState()
     val cadetAvatars by viewModel.cadetAvatars.collectAsState()
+    val unreadMessageCounts by viewModel.unreadMessageCounts.collectAsState()
 
     LaunchedEffect(Unit) {
         viewModel.loadCadets()
@@ -134,7 +137,8 @@ fun CadetsListScreen(
                     cadet = cadet,
                     viewModel = viewModel,
                     navController = navController,
-                    cadetAvatar = cadetAvatars[cadet.id]
+                    cadetAvatar = cadetAvatars[cadet.id],
+                    unreadMessagesCount = unreadMessageCounts[cadet.id] ?: 0
                 )
             }
         }
@@ -142,9 +146,11 @@ fun CadetsListScreen(
 }
 
 @Composable
-fun CadetCard(cadet: Cadet, viewModel: CadetListsViewModel, navController: NavController, cadetAvatar: ImageBitmap? = null) {
+fun CadetCard(cadet: Cadet, viewModel: CadetListsViewModel, navController: NavController, cadetAvatar: ImageBitmap? = null, unreadMessagesCount: Int = 0) {
     var cadetUser by remember { mutableStateOf<User?>(null) }
     var planPracticeHours by remember { mutableIntStateOf(50) } // Default value
+
+    Log.i("CadetCard", "Messages count for cadet ${cadet.id}: $unreadMessagesCount")
 
     // Fetch the specific user details for this cadet when the card is composed
     LaunchedEffect(cadet.id) {
@@ -181,28 +187,29 @@ fun CadetCard(cadet: Cadet, viewModel: CadetListsViewModel, navController: NavCo
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(50.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (cadetAvatar != null) {
-                        Log.i("CadetCard", "Displaying avatar for cadet ${cadet.id}")
-                        Image(
-                            painter = BitmapPainter(cadetAvatar),
-                            contentDescription = stringResource(R.string.profile),
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Icon(
-                            Icons.Default.Person,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(30.dp)
-                        )
+                BadgedBox(badge = { Badge { Text(unreadMessagesCount.toString()) } }) {
+                    Box(
+                        modifier = Modifier
+                            .size(50.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (cadetAvatar != null) {
+                            Image(
+                                painter = BitmapPainter(cadetAvatar),
+                                contentDescription = stringResource(R.string.profile),
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Icon(
+                                Icons.Default.Person,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(25.dp)
+                            )
+                        }
                     }
                 }
                 // Display cadet's name, or "Loading..." if not yet fetched
@@ -211,7 +218,9 @@ fun CadetCard(cadet: Cadet, viewModel: CadetListsViewModel, navController: NavCo
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f).padding(horizontal = 12.dp)
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 12.dp)
                 )
                 IconButton(onClick = onChatClick) {
                     Icon(

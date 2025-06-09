@@ -28,6 +28,9 @@ class NotificationsViewModel(
     private val _unreadNotificationsState = MutableStateFlow<List<Notification?>?>(null)
     val unreadNotificationsState = _unreadNotificationsState.asStateFlow()
 
+    private val _unreadNotificationsCount = MutableStateFlow<Int>(0)
+    val unreadNotificationsCount = _unreadNotificationsCount.asStateFlow()
+
     fun fetchNotifications() {
         _notificationsState.value = NotificationsState.Loading
         var readNotifications: List<Notification?>? = null
@@ -40,12 +43,28 @@ class NotificationsViewModel(
                 )?.notifications()
                 readNotifications = notifications?.filter { it.read }
                 unreadNotifications = notifications?.filter { !it.read }
+                _unreadNotificationsCount.value = unreadNotifications?.size ?: 0
             } catch (e: Exception) {
                 error = e.message
             }
             _readNotificationsState.value = readNotifications
             _unreadNotificationsState.value = unreadNotifications
             _notificationsState.value = NotificationsState.Idle
+        }
+    }
+
+    fun markNotificationAsRead(notification: Notification) {
+        viewModelScope.launch {
+            if (!notification.read) {
+                try {
+                    notification.read = true // Set the notification as read
+                    notification.update() // This calls the update method in the Notification model
+                    Log.d("NotificationsViewModel", "Notification ${notification.id} marked as read.")
+                    fetchNotifications() // Re-fetch to update UI and counts
+                } catch (e: Exception) {
+                    Log.e("NotificationsViewModel", "Error marking notification as read: ${e.message}", e)
+                }
+            }
         }
     }
 }

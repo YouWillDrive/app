@@ -18,6 +18,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ru.gd_alt.youwilldrive.data.DataStoreManager
 import ru.gd_alt.youwilldrive.models.Cadet
+import ru.gd_alt.youwilldrive.models.Chat
+import ru.gd_alt.youwilldrive.models.Message
 import ru.gd_alt.youwilldrive.models.User
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
@@ -36,6 +38,9 @@ class CadetListsViewModel(private val dataStoreManager: DataStoreManager) : View
 
     private val _cadetAvatars = MutableStateFlow<Map<String, ImageBitmap?>>(emptyMap())
     val cadetAvatars: StateFlow<Map<String, ImageBitmap?>> = _cadetAvatars.asStateFlow()
+
+    private val _unreadMessageCounts = MutableStateFlow<Map<String, Int>>(emptyMap())
+    val unreadMessageCounts: StateFlow<Map<String, Int>> = _unreadMessageCounts.asStateFlow()
 
     @OptIn(ExperimentalEncodingApi::class)
     fun loadCadets() {
@@ -59,6 +64,12 @@ class CadetListsViewModel(private val dataStoreManager: DataStoreManager) : View
                             val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
                             val bitmapAvatar = bitmap?.asImageBitmap()
                             _cadetAvatars.value = (_cadetAvatars.value + (cadet.id to bitmapAvatar))
+                            _unreadMessageCounts.value = _unreadMessageCounts.value + (
+                                    cadet.id to Message.countUnreadInChat(
+                                        Chat.byParticipants(cadet.me()!!, user)!!.id,
+                                        user.id
+                                    )
+                                )
                         }
                         else {
                             _cadetAvatars.value = (_cadetAvatars.value + (cadet.id to null))

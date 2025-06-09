@@ -19,6 +19,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -41,6 +43,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -49,6 +52,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import ru.gd_alt.youwilldrive.R
+import ru.gd_alt.youwilldrive.data.DataStoreManager
 import ru.gd_alt.youwilldrive.models.Cadet
 import ru.gd_alt.youwilldrive.models.Placeholders.DefaultCadet
 import ru.gd_alt.youwilldrive.models.Placeholders.DefaultUser
@@ -56,19 +60,26 @@ import ru.gd_alt.youwilldrive.models.Placeholders.DefaultUser1
 import ru.gd_alt.youwilldrive.models.Plan
 import ru.gd_alt.youwilldrive.models.User
 import ru.gd_alt.youwilldrive.ui.navigation.Route
+import ru.gd_alt.youwilldrive.ui.screens.CadetsList.CadetListsViewModel
+import ru.gd_alt.youwilldrive.ui.screens.CadetsList.CadetsListViewModelFactory
 import ru.gd_alt.youwilldrive.ui.screens.Profile.LoadingCard
 
 
 @Composable
 fun CadetInfo(
     cadet: Cadet = DefaultCadet,
-    viewModel: CadetInfoViewModel = viewModel(),
     navController: NavController = rememberNavController()
 ) {
+    val context = LocalContext.current.applicationContext
+    val dataStoreManager = remember { DataStoreManager(context) }
     val scope = rememberCoroutineScope()
     var plan: Plan? by remember { mutableStateOf(null) }
     var instructorUser: User? by remember { mutableStateOf(null) }
+
+    val factory = remember { CadetInfoViewModelFactory(dataStoreManager) }
+    val viewModel: CadetInfoViewModel = viewModel(factory = factory)
     val instructorAvatarBitmap by viewModel.instructorAvatarBitmap.collectAsState()
+    val unreadMessagesCount by viewModel.unreadMessagesCount.collectAsState()
 
     LaunchedEffect(scope) {
         viewModel.fetchInstructorUser(cadet) { data, _ ->
@@ -76,6 +87,12 @@ fun CadetInfo(
         }
         viewModel.fetchPlan(cadet) { data, _ ->
             plan = data
+        }
+    }
+
+    LaunchedEffect(instructorUser) {
+        if (instructorUser != null) {
+            viewModel.fetchUnreadMessagesCount(cadet, instructorUser!!)
         }
     }
 
@@ -95,7 +112,7 @@ fun CadetInfo(
 
     Spacer(Modifier.height(20.dp))
 
-    InstructorCard(instructorUser ?: DefaultUser1, instructorAvatar = instructorAvatarBitmap) { navController.navigate("${Route.Chat}/${instructorUser!!.id}") }
+    InstructorCard(instructorUser ?: DefaultUser1, instructorAvatar = instructorAvatarBitmap, unreadMessagesCount) { navController.navigate("${Route.Chat}/${instructorUser!!.id}") }
 }
 
 @Composable
@@ -170,7 +187,8 @@ fun CadetInfoRows(
 fun InstructorCard(
     user: User = DefaultUser,
     instructorAvatar: ImageBitmap? = null,
-    onClick: () -> Unit = {},
+    unreadMessagesCount: Int = 0,
+    onClick: () -> Unit = {}
 ) {
     Card(
         Modifier
@@ -190,27 +208,29 @@ fun InstructorCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(50.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (instructorAvatar != null) {
-                        Image(
-                            painter = BitmapPainter(instructorAvatar),
-                            contentDescription = stringResource(R.string.profile),
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Icon(
-                            Icons.Default.Person,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(30.dp)
-                        )
+                BadgedBox(badge = { Badge { Text(unreadMessagesCount.toString()) } }) {
+                    Box(
+                        modifier = Modifier
+                            .size(50.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (instructorAvatar != null) {
+                            Image(
+                                painter = BitmapPainter(instructorAvatar),
+                                contentDescription = stringResource(R.string.profile),
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Icon(
+                                Icons.Default.Person,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(30.dp)
+                            )
+                        }
                     }
                 }
                 Text(

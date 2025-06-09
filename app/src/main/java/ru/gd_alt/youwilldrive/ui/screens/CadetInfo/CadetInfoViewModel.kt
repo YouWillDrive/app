@@ -12,8 +12,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import ru.gd_alt.youwilldrive.data.DataStoreManager
 import ru.gd_alt.youwilldrive.models.Cadet
+import ru.gd_alt.youwilldrive.models.Chat
 import ru.gd_alt.youwilldrive.models.Instructor
+import ru.gd_alt.youwilldrive.models.Message
 import ru.gd_alt.youwilldrive.models.Plan
 import ru.gd_alt.youwilldrive.models.User
 import kotlin.io.encoding.Base64
@@ -28,14 +31,19 @@ sealed class InstructorState {
     data object Loading : InstructorState()
 }
 
-class CadetInfoViewModel : ViewModel() {
+class CadetInfoViewModel(
+    val dataStoreManager: DataStoreManager
+) : ViewModel() {
     private val _planState = MutableStateFlow<PlanState>(PlanState.Loading)
     val planState = _planState.asStateFlow()
     private val _instructorState = MutableStateFlow<InstructorState>(InstructorState.Loading)
-    val instructorState = _instructorState.asStateFlow()
 
     private val _instructorAvatarBitmap = MutableStateFlow<ImageBitmap?>(null)
     val instructorAvatarBitmap: StateFlow<ImageBitmap?> = _instructorAvatarBitmap.asStateFlow()
+    var instructorUser: User? = null
+
+    private val _unreadMessagesCount = MutableStateFlow<Int>(0)
+    val unreadMessagesCount: StateFlow<Int> = _unreadMessagesCount.asStateFlow()
 
     fun fetchPlan(cadet: Cadet, onResponse: (Plan?, String?) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -59,7 +67,6 @@ class CadetInfoViewModel : ViewModel() {
     fun fetchInstructorUser(cadet: Cadet, onResponse: (User?, String?) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
             _instructorState.value = InstructorState.Loading
-            var instructorUser: User? = null
             var error: String? = null
 
             try {
@@ -91,6 +98,15 @@ class CadetInfoViewModel : ViewModel() {
                 onResponse(instructorUser, error)
                 _instructorState.value = InstructorState.Idle
             }
+        }
+    }
+
+    fun fetchUnreadMessagesCount(cadet: Cadet, instructorU: User?) {
+        viewModelScope.launch(Dispatchers.IO) {
+            _unreadMessagesCount.value = Message.countUnreadInChat(
+                        Chat.byParticipants(cadet.me()!!, instructorU!!)!!.id,
+                        cadet.me()!!.id
+                    )
         }
     }
 }

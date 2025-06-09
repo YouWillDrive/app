@@ -76,28 +76,66 @@ class ChatViewModel(
 
                 Log.d("ChatViewModel", "Loaded messages: $messagesFromDb")
 
+                val updatedMessages = mutableListOf<ChatMessage>()
+                val messagesToMarkRead = mutableListOf<Message>()
+
                 // Convert database Message models to UI ChatMessage models
-                val uiMessages = messagesFromDb.map { dbMessage ->
-                    // Determine if the message was sent or received
+                for (dbMessage in messagesFromDb) {
                     val senderId = dbMessage.expansions["sender"]!!.toString()
                     val messageType = if (senderId == myUserId) {
                         MessageType.SENT
                     } else {
+                        // If it's a received message and not already read, mark it as read.
+                        if (!dbMessage.isRead) {
+                            messagesToMarkRead.add(dbMessage) // Collect messages to mark read
+                        }
                         MessageType.RECEIVED
                     }
-                    ChatMessage(
-                        text = dbMessage.text,
-                        type = messageType,
-                        timestamp = dbMessage.dateSent.toJavaLocalDateTime()
+                    updatedMessages.add(
+                        ChatMessage(
+                            text = dbMessage.text,
+                            type = messageType,
+                            timestamp = dbMessage.dateSent.toJavaLocalDateTime()
+                        )
                     )
                 }
-                _rawMessages.value = uiMessages.sortedBy { it.timestamp } as List<ChatMessage>
+
+                _rawMessages.value = updatedMessages.sortedBy { it.timestamp } as List<ChatMessage>
+
+                // Mark messages as read in a separate loop/job to avoid blocking UI update
+                launch {
+                    for (msg in messagesToMarkRead) {
+                        msg.markAsRead()
+                    }
+                    if (messagesToMarkRead.isNotEmpty()) {
+                        // Re-fetch messages after marking some as read to update DB state and potentially UI
+                        // (though UI will already reflect "read" if we set isRead locally in ChatMessage)
+                        val refreshedMessagesFromDb = Message.allWithChatAndSender(chatSession?.id ?: return@launch)
+                        val refreshedUiMessages = refreshedMessagesFromDb.map { dbMessage ->
+                            val senderId = dbMessage.expansions["sender"]!!.toString()
+                            val messageType = if (senderId == myUserId) {
+                                MessageType.SENT
+                            } else {
+                                MessageType.RECEIVED
+                            }
+                            ChatMessage(
+                                text = dbMessage.text,
+                                type = messageType,
+                                timestamp = dbMessage.dateSent.toJavaLocalDateTime()
+                            )
+                        }
+                        _rawMessages.value = refreshedUiMessages.sortedBy { it.timestamp } as List<ChatMessage>
+                    }
+                }
+
 
                 // Kill any previous live query before starting a new one
                 killLiveQuery()
 
                 // Start live query for new messages
-                val query = "LIVE SELECT * FROM belongs_to WHERE out = ${_chat.value!!.id}"
+                // This query assumes 'belongs_to' relation is where 'in' is message and 'out' is chat
+                // And we want to fetch the sender for the message to determine if it's ours or someone else's.
+                val query = "LIVE SELECT * FROM belongs_to WHERE out = ${RecordID(_chat.value!!.id.split(":")[0], _chat.value!!.id.split(":")[1])}"
                 liveQueryId = Connection.cl.liveQuery(query, null, LiveUpdateCallback.Async { update ->
                     if (update is LiveQueryUpdate.Create) {
                         // A new 'belongs_to' relationship was created, meaning a new message arrived
@@ -116,6 +154,10 @@ class ChatViewModel(
                                 timestamp = newDbMessage.dateSent.toJavaLocalDateTime()
                             )
                             _rawMessages.value = _rawMessages.value + uiMessage
+                            // If it's a message received from someone else, mark it as read immediately.
+                            if (senderId != myUserId) {
+                                newDbMessage.markAsRead()
+                            }
                         }
                     }
                 })

@@ -1,8 +1,11 @@
 package ru.gd_alt.youwilldrive.ui.components
 
+import android.util.Log
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Circle
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -30,17 +33,29 @@ fun BottomNavBar(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
     currentRoute: Route?,
-    topLevelRoutes: List<Route> = Route.topLevelRoutes
+    topLevelRoutes: List<Route> = Route.topLevelRoutes,
+    unreadNotificationCount: Int = 0
 ) {
     NavigationBar(modifier) {
         topLevelRoutes.forEach { route ->
             NavigationBarItem(
                 icon = {
-                    Icon(
-                        imageVector = route.imageVector ?: Icons.Default.Circle,
-                        contentDescription = stringResource(route.titleId),
-                        Modifier.size(24.dp)
-                    )
+                    if (route == Route.Notifications && unreadNotificationCount > 0) {
+                        Log.d("BottomNavBar", "Unread notifications count: $unreadNotificationCount")
+                        BadgedBox(badge = { Badge { Text(unreadNotificationCount.toString()) } }) {
+                            Icon(
+                                imageVector = route.imageVector ?: Icons.Default.Circle,
+                                contentDescription = stringResource(route.titleId),
+                                Modifier.size(24.dp)
+                            )
+                        }
+                    } else {
+                        Icon(
+                            imageVector = route.imageVector ?: Icons.Default.Circle,
+                            contentDescription = stringResource(route.titleId),
+                            Modifier.size(24.dp)
+                        )
+                    }
                 },
                 label = { Text(stringResource(route.titleId)) },
                 selected = currentRoute == route,
@@ -71,7 +86,8 @@ fun BottomNavBarPreview() {
     MaterialTheme {
         BottomNavBar(
             navController = navController,
-            currentRoute = currentRoutePreview, // Provide a simulated current route
+            currentRoute = currentRoutePreview, // Provide a simulated current route,
+            unreadNotificationCount = 5,
             // topLevelRoutes uses the default from the Route companion object
             modifier = Modifier
         )
