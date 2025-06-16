@@ -106,6 +106,8 @@ fun EventEditDialog(
     // State for selected cadet and type
     var selectedCadet by remember { mutableStateOf<String?>(null) }
     var selectedType by remember { mutableStateOf<String?>(null) }
+    var _selectedCadet by remember { mutableStateOf<String?>(null) }
+    var _selectedType by remember { mutableStateOf<String?>(null) }
 
     val onMainDismiss = { dialogOpen.value = false }
 
@@ -201,7 +203,6 @@ fun EventEditDialog(
                     ) {
                         Text(stringResource(R.string.type), style = MaterialTheme.typography.bodyLarge) // Use typography
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            // TODO: Display selected type name
                             Text(
                                 selectedType ?: stringResource(R.string.select_type), // Show hint if none selected
                                 style = MaterialTheme.typography.bodyMedium // Use typography for value
@@ -221,7 +222,8 @@ fun EventEditDialog(
                             DropdownMenuItem(
                                 text = { Text(it.second) },
                                 onClick = {
-                                    selectedType = it.first
+                                    selectedType = it.second
+                                    _selectedType = it.first
                                     typePickerOpen = false
                                 }
                             )
@@ -241,7 +243,6 @@ fun EventEditDialog(
                     ) {
                         Text(stringResource(R.string.cadet), style = MaterialTheme.typography.bodyLarge) // Use typography
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            // TODO: Display selected cadet name
                             Text(
                                 selectedCadet ?: stringResource(R.string.select_cadet), // Show hint if none selected
                                 style = MaterialTheme.typography.bodyMedium // Use typography for value
@@ -261,7 +262,8 @@ fun EventEditDialog(
                             DropdownMenuItem(
                                 text = { Text(cadet.second) },
                                 onClick = {
-                                    selectedCadet = cadet.first
+                                    selectedCadet = cadet.second
+                                    _selectedCadet = cadet.first
                                     cadetPickerOpen = false
                                 }
                             )
@@ -295,8 +297,8 @@ fun EventEditDialog(
                         second = 0,
                         nanosecond = 0
                     )
-                    val cadetId = selectedCadet
-                    val typeId = selectedType
+                    val cadetId = _selectedCadet
+                    val typeId = _selectedType
                     if (add && cadetId != null && typeId != null) {
                         viewModel.createEvent(selectedLocalDateTime, cadetId, typeId)
                     }
