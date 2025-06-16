@@ -47,6 +47,11 @@ class User(override val id: String, var avatarPhoto: String, var phoneNum: Strin
         }
     }
 
+    val fullName: String
+        get() = "$surname $name $patronymic"
+    val fullNameShort: String
+        get() = "$surname ${name[0]}. ${patronymic[0]}."
+
     suspend fun role(): Role? {
         return fetchRelatedSingle<Role>("of_role", Role::fromId)
     }

@@ -53,7 +53,7 @@ class CalendarViewModel(
                         user?.isCadet() ?: user?.isInstructor()
                     )?.events() ?: emptyList()
                 ).fastFilter {
-                    true // TODO: Event.confirmed()
+                    it.actualConfirmationValue("confirmation_types:to_happen") == 1L
                 }
                 Log.d("fetchEvent", "Loaded events: $events")
             } catch (e: Exception) {
@@ -64,6 +64,5 @@ class CalendarViewModel(
                 _calendarState.value = CalendarState.Idle
             }
         }
-
     }
 }

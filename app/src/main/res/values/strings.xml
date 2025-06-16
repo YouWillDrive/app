@@ -45,6 +45,7 @@
     <string name="yes">Да</string>
     <string name="no">Нет</string>
     <string name="cancel">Отмена</string>
+    <string name="cancel_event">Отменить полностью</string>
     <string name="postpone">Перенести</string>
     <string name="time">Время</string>
     <string name="duration">Длительность</string>

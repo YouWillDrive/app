@@ -59,7 +59,7 @@ fun Calendar(
 ) {
     val yearMonth = YearMonth.of(year, month)
     val daysInMonth = yearMonth.lengthOfMonth()
-    val firstDayOfMonth = yearMonth.atDay(1).dayOfWeek.value % 7 - 1
+    val firstDayOfMonth = yearMonth.atDay(1).dayOfWeek.value - 1
 
     val eventTypeColors = mutableMapOf<String, Color>(
         "event_types:lesson" to Color(0xFF39A0ED),

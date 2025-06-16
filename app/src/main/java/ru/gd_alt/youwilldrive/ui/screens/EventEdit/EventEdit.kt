@@ -7,20 +7,16 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
@@ -30,39 +26,36 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import kotlinx.datetime.LocalDate
+import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.format
-import kotlinx.datetime.format.char
 import kotlinx.datetime.toKotlinInstant
 import kotlinx.datetime.toLocalDateTime
 import ru.gd_alt.youwilldrive.R
+import ru.gd_alt.youwilldrive.data.DataStoreManager
 import java.time.Duration
 import java.time.Instant
-import java.time.temporal.TemporalAmount
 import java.util.concurrent.TimeUnit
-import kotlin.time.Duration.Companion.days
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true)
@@ -70,15 +63,31 @@ import kotlin.time.Duration.Companion.days
 fun EventEditDialog(
     dialogOpen: MutableState<Boolean> = remember { mutableStateOf(false) },
     initialDateTimeMillis: Long = Instant.now().toEpochMilli(),
-    onConfirm: (LocalDateTime /* TODO: Add Cadet ID/Object */) -> Unit = {},
-    availableCadets: List<String> = listOf("Кадет 1", "Кадет 2", "Кадет 3"),
-    availableTypes: List<String> = listOf("Тип 1", "Тип 2", "Тип 3")
+    add: Boolean = true
 ) {
     if (!dialogOpen.value) return
 
-    // TODO: Bind initial event properties (date, time, selected cadet) to state variables
+    val context = LocalContext.current.applicationContext
+    val dataStoreManager = remember { DataStoreManager(context) }
+    val viewModel : EventEditViewModel = viewModel(
+        factory = EventEditViewModelFactory(dataStoreManager)
+    )
+
+
+    val scope = rememberCoroutineScope()
+    var cadets by remember { mutableStateOf(listOf("" to "")) }
+    var types by remember { mutableStateOf(listOf("" to "")) }
+    LaunchedEffect(scope) {
+        viewModel.fetchCadetsIdName { data, _ ->
+            cadets = data
+        }
+        viewModel.fetchEventTypes { data, _ ->
+            types = data
+        }
+    }
+
     val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = Instant.ofEpochMilli(initialDateTimeMillis).plus(Duration.ofDays(1L)).toEpochMilli()
+        initialSelectedDateMillis = initialDateTimeMillis
     )
 
     val initialDateTime = Instant.ofEpochMilli(initialDateTimeMillis).toKotlinInstant().toLocalDateTime(TimeZone.currentSystemDefault())
@@ -94,8 +103,7 @@ fun EventEditDialog(
     var cadetPickerOpen by remember { mutableStateOf(false) }
     var typePickerOpen by remember { mutableStateOf(false) }
 
-    // State for selected cadet
-    // TODO: Bind initial selected cadet
+    // State for selected cadet and type
     var selectedCadet by remember { mutableStateOf<String?>(null) }
     var selectedType by remember { mutableStateOf<String?>(null) }
 
@@ -112,7 +120,7 @@ fun EventEditDialog(
                     "${it.dayOfMonth}.${it.monthNumber}.${it.year}"
                 }
             )
-                },
+        },
         text = {
             Column {
                 // Time Selection Row
@@ -140,46 +148,46 @@ fun EventEditDialog(
                     }
                 }
 
-                Row(
-                    Modifier
-                        .padding(vertical = 12.dp)
-                        .fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        stringResource(R.string.duration),
-                        Modifier
-                            .weight(3f),
-                        style = MaterialTheme.typography.bodyLarge // Use typography
-                    )
-                    Row(
-                        Modifier.weight(1f),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        BasicTextField(
-                            duration,
-                            { duration = it },
-                            Modifier.weight(1f),
-                            textStyle = TextStyle(textAlign = TextAlign.Center),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            singleLine = true
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                it()
-                                Spacer(
-                                    Modifier
-                                        .height(1.dp)
-                                        .background(MaterialTheme.colorScheme.primary)
-                                        .fillMaxWidth()
-                                )
-                            }
-                        }
-                        Text("ч.")
-                    }
-                }
+//                Row(
+//                    Modifier
+//                        .padding(vertical = 12.dp)
+//                        .fillMaxWidth(),
+//                    horizontalArrangement = Arrangement.SpaceBetween,
+//                    verticalAlignment = Alignment.CenterVertically
+//                ) {
+//                    Text(
+//                        stringResource(R.string.duration),
+//                        Modifier
+//                            .weight(3f),
+//                        style = MaterialTheme.typography.bodyLarge // Use typography
+//                    )
+//                    Row(
+//                        Modifier.weight(1f),
+//                        verticalAlignment = Alignment.CenterVertically
+//                    ) {
+//                        BasicTextField(
+//                            duration,
+//                            { duration = it },
+//                            Modifier.weight(1f),
+//                            textStyle = TextStyle(textAlign = TextAlign.Center),
+//                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+//                            singleLine = true
+//                        ) {
+//                            Column(
+//                                horizontalAlignment = Alignment.CenterHorizontally
+//                            ) {
+//                                it()
+//                                Spacer(
+//                                    Modifier
+//                                        .height(1.dp)
+//                                        .background(MaterialTheme.colorScheme.primary)
+//                                        .fillMaxWidth()
+//                                )
+//                            }
+//                        }
+//                        Text("ч.")
+//                    }
+//                }
 
                 // Type Selection Row/Dropdown
                 Box {
@@ -193,7 +201,7 @@ fun EventEditDialog(
                     ) {
                         Text(stringResource(R.string.type), style = MaterialTheme.typography.bodyLarge) // Use typography
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            // TODO: Display selected cadet name
+                            // TODO: Display selected type name
                             Text(
                                 selectedType ?: stringResource(R.string.select_type), // Show hint if none selected
                                 style = MaterialTheme.typography.bodyMedium // Use typography for value
@@ -209,11 +217,11 @@ fun EventEditDialog(
                         expanded = typePickerOpen,
                         onDismissRequest = { typePickerOpen = false }
                     ) {
-                        availableTypes.forEach {
+                        types.forEach {
                             DropdownMenuItem(
-                                text = { Text(it) },
+                                text = { Text(it.second) },
                                 onClick = {
-                                    selectedType = it // TODO: Store/Use actual Type
+                                    selectedType = it.first
                                     typePickerOpen = false
                                 }
                             )
@@ -249,12 +257,11 @@ fun EventEditDialog(
                         expanded = cadetPickerOpen,
                         onDismissRequest = { cadetPickerOpen = false }
                     ) {
-                        // TODO: Populate this list dynamically from availableCadets prop
-                        availableCadets.forEach { cadetName ->
+                        cadets.forEach { cadet ->
                             DropdownMenuItem(
-                                text = { Text(cadetName) },
+                                text = { Text(cadet.second) },
                                 onClick = {
-                                    selectedCadet = cadetName // TODO: Store/Use actual cadet ID/Object
+                                    selectedCadet = cadet.first
                                     cadetPickerOpen = false
                                 }
                             )
@@ -265,7 +272,9 @@ fun EventEditDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = {
+                onClick = onClick@{
+                    // TODO: Add warning if not selected
+                    if (selectedType == null || selectedCadet == null) return@onClick
                     // Calculate the selected LocalDateTime
                     val selectedDateMillis = datePickerState.selectedDateMillis ?: initialDateTimeMillis // Use initial or current if date picker was not opened
                     val selectedTimeMillis = TimeUnit.HOURS.toMillis(timePickerState.hour.toLong()) +
@@ -286,9 +295,11 @@ fun EventEditDialog(
                         second = 0,
                         nanosecond = 0
                     )
-
-                    // TODO: Pass selected cadet data along with LocalDateTime
-                    onConfirm(selectedLocalDateTime /* TODO: Add selectedCadet */)
+                    val cadetId = selectedCadet
+                    val typeId = selectedType
+                    if (add && cadetId != null && typeId != null) {
+                        viewModel.createEvent(selectedLocalDateTime, cadetId, typeId)
+                    }
                     onMainDismiss()
                 }
             ) {
@@ -308,8 +319,6 @@ fun EventEditDialog(
             onDismissRequest = onDismiss,
             confirmButton = {
                 TextButton({
-                    // TODO: The datePickerState is already updated when the user selects a date.
-                    // well then just don't use it duh
                     onDismiss()
                 }) {
                     Text(stringResource(R.string.ok))
@@ -331,8 +340,6 @@ fun EventEditDialog(
             onDismissRequest = onDismiss,
             confirmButton = {
                 TextButton({
-                    // TODO: The timePickerState is already updated when the user confirms.
-                    // well then just don't use it duh
                     onDismiss()
                 }) {
                     Text(stringResource(R.string.ok))

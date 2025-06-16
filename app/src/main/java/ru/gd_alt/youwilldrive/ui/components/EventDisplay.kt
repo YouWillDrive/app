@@ -148,8 +148,7 @@ fun EventItem(event: Event, myRole: Role, onClick: (Event) -> Unit = {}) {
         "event_types:school_exam" to Color(0xFFD1D646),
     )
 
-    val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
-    val formattedTime = dateTime.format(timeFormatter)
+    val formattedTime = formatDate(dateTime)
     var eventType by remember { mutableStateOf<EventType?>(null) }
     var eventCadet by remember { mutableStateOf<Cadet?>(null) }
     var eventInstructor by remember { mutableStateOf<Instructor?>(null) }
@@ -191,7 +190,6 @@ fun EventItem(event: Event, myRole: Role, onClick: (Event) -> Unit = {}) {
                     displayParticipant = (if (myRole.name == "Курсант") eventInstructor else eventCadet)!!.me()
                 } catch (e: Exception) {
                     Log.e("CalendarDay", "Error fetching event type for event ${event.id}: ${e.message}")
-                    eventType = null
                 }
             }
 

@@ -1,5 +1,6 @@
 package ru.gd_alt.youwilldrive.ui.screens.Events
 
+import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,6 +30,8 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,21 +40,20 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.util.fastFilter
+import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toJavaLocalDate
-import kotlinx.datetime.toKotlinLocalDate
+import kotlinx.datetime.toJavaLocalDateTime
 import kotlinx.datetime.toLocalDateTime
 import ru.gd_alt.youwilldrive.R
 import ru.gd_alt.youwilldrive.data.DataStoreManager
@@ -65,14 +67,16 @@ import ru.gd_alt.youwilldrive.ui.screens.Calendar.ConfirmPastEvent
 import ru.gd_alt.youwilldrive.ui.screens.Calendar.EditUpcomingEvent
 
 @Preview
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EventsScreen() {
     val context = LocalContext.current.applicationContext
     val dataStoreManager = remember { DataStoreManager(context) }
+    val factory = remember(dataStoreManager) {
+        EventsViewModelFactory(dataStoreManager)
+    }
+    val viewModel: EventsViewModel = viewModel(factory = factory)
     val scope = rememberCoroutineScope()
 
-    var events by remember { mutableStateOf(listOf(DefaultEvent, DefaultEvent1)) }
     var myRole: Role? by remember { mutableStateOf(null) }
 
     var selectedEvent: Event? by remember { mutableStateOf(null) }
@@ -85,15 +89,11 @@ fun EventsScreen() {
     val selectedTabIndex by remember { derivedStateOf { pagerState.currentPage } }
 
     LaunchedEffect(scope) {
-        val user = User.fromId(dataStoreManager.getUserId().first { !it.isNullOrEmpty() } ?: "")
-        events = (
-                (
-                        user?.isCadet() ?: user?.isInstructor()
-                        )?.events() ?: emptyList()
-                )
+        viewModel.fetchEvents()
 
         myRole = User.fromId(dataStoreManager.getUserId().firstOrNull().toString())?.role()
     }
+    val events = viewModel.events.collectAsState().value ?: listOf(DefaultEvent, DefaultEvent1)
 
     Column {
         TabRow(selectedTabIndex = selectedTabIndex) {
@@ -102,8 +102,9 @@ fun EventsScreen() {
                     selected = selectedTabIndex == index,
                     onClick = {
                         scope.launch {
-                            pagerState.animateScrollToPage(index)
+                            pagerState.scrollToPage(index)
                         }
+                        selectedEvent = null
                     },
                     text = { Text(title) }
                 )
@@ -121,14 +122,24 @@ fun EventsScreen() {
                             .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(events/* .filter { !it.confirmed } */) { event -> // TODO
-                            EventItem(event, myRole ?: Role("x", "Cadet")) {
+                        items(events.filter { !it.confirmed }) { event ->
+                            EventItem(event, myRole ?: Role("x", "Курсант")) {
                                 selectedEvent = it
                             }
                         }
                     }
 
-                    ConfirmEventDialog(selectedEvent != null, onDismiss = { selectedEvent = null }) // TODO
+                    ConfirmEventDialog(
+                        selectedEvent,
+                        onDismiss = { selectedEvent = null },
+                        onConfirm = {
+                            val selectedId = selectedEvent?.id
+                            if (selectedId != null) {
+                                viewModel.acceptEvent(selectedId)
+                            }
+                        },
+                        onPostpone = viewModel::postpone
+                    )
                 }
                 1 -> {
                     LazyColumn(
@@ -138,7 +149,7 @@ fun EventsScreen() {
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(
-                            events.filter { it.date < Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()) }
+                            events.filter { it.date > Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()) && it.confirmed }
                         ) { event ->
                             EventItem(event, myRole ?: Role("x", "Cadet")) {
                                 selectedEvent = it
@@ -146,14 +157,16 @@ fun EventsScreen() {
                         }
                     }
 
-                    if (selectedEvent != null) {
-                        EditUpcomingEvent(selectedEvent?.let { it.date.date.toJavaLocalDate()} ?: java.time.LocalDate.now(),
-                            onDismiss = {
-                                selectedEvent = null
-                            }) {
+                    EditUpcomingEvent(
+                        selectedEvent,
+                        onDismiss = {
                             selectedEvent = null
-                        } // TODO ^^
-                    }
+                        },
+                        onCancel = {
+                            viewModel.declineEvent(it.id)
+                        },
+                        onPostpone = viewModel::postpone
+                    )
                 }
                 2 -> {
                     LazyColumn(
@@ -171,10 +184,17 @@ fun EventsScreen() {
                         }
                     }
 
-                    if (selectedEvent != null) {
-                        ConfirmPastEvent(selectedEvent?.let { it.date.date} ?: java.time.LocalDate.now().toKotlinLocalDate()) {
-                            selectedEvent = null
-                        } // TODO ^^
+                    val currentEvent = selectedEvent
+                    if (currentEvent != null) {
+                        ConfirmPastEvent(
+                            currentEvent,
+                            {
+                                selectedEvent = null
+                            },
+                            {
+                                viewModel.confirmDuration(currentEvent.id, it)
+                            }
+                        )
                     }
                 }
             }
@@ -185,13 +205,51 @@ fun EventsScreen() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ConfirmEventDialog(display: Boolean = false, onDismiss: () -> Unit) {
-    val datePickerState = rememberDatePickerState()
+fun ConfirmEventDialog(event: Event?, onDismiss: () -> Unit, onConfirm: (Int) -> Unit, onPostpone: (Event, Long) -> Unit) {
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = Clock.System.now().toEpochMilliseconds()
+    )
     val timePickerState = rememberTimePickerState()
     var timePickerOpen by remember { mutableStateOf(false) }
     var datePickerOpen by remember { mutableStateOf(false) }
 
-    if (!display) return
+    if (event == null || event.date.toJavaLocalDateTime().isAfter(java.time.LocalDateTime.now())) return
+    var isSameUser: MutableState<Boolean?> = remember { mutableStateOf(null) }
+    val context = LocalContext.current.applicationContext
+    val dataStoreManager = remember { DataStoreManager(context) }
+
+    LaunchedEffect(event.id) {
+        val userId = dataStoreManager.getUserId().first()
+        if (userId == null) {
+            isSameUser.value
+            return@LaunchedEffect
+        }
+        if (
+            (event.actualConfirmationValue("confirmation_types:to_happen") == -1L)
+            && User.fromId(userId)?.isInstructor() != null
+        ) {
+            Log.d("isUser", "same")
+            isSameUser.value = true
+            return@LaunchedEffect
+        }
+
+        else {
+            try {
+                isSameUser.value = (event.confirmations().sortedBy { it.date }.last {
+                    it.confirmationType()?.id == "confirmation_types:postpone"
+                }.confirmator()?.id ?: userId) == userId
+                Log.d("isUser", "same1")
+                isSameUser.value = true
+                return@LaunchedEffect
+            } catch (_: NoSuchElementException) {}
+        }
+
+        Log.d("isUser", "diff")
+        isSameUser.value = false
+    }
+
+    Log.d("isUser", "checking user")
+    if (isSameUser.value != false) return
 
     BasicAlertDialog(onDismiss) {
         Card {
@@ -219,7 +277,7 @@ fun ConfirmEventDialog(display: Boolean = false, onDismiss: () -> Unit) {
                         stringResource(R.string.postpone),
                         Modifier
                             .weight(0.5f)
-                            .clickable { datePickerOpen = true },  // TODO
+                            .clickable { datePickerOpen = true },
                         color = MaterialTheme.colorScheme.primary,
                         textAlign = TextAlign.Center
                     )
@@ -227,7 +285,7 @@ fun ConfirmEventDialog(display: Boolean = false, onDismiss: () -> Unit) {
                         stringResource(R.string.yes),
                         Modifier
                             .weight(0.5f)
-                            .clickable { onDismiss() },
+                            .clickable { onConfirm(1); onDismiss() },
                         color = MaterialTheme.colorScheme.primary,
                         textAlign = TextAlign.Center
                     )
@@ -265,7 +323,21 @@ fun ConfirmEventDialog(display: Boolean = false, onDismiss: () -> Unit) {
             confirmButton = {
                 TextButton({
                     onDismiss()
-                    onTpDismiss() // TODO
+
+                    val calendar = java.util.Calendar.getInstance()
+                    val date = Instant.fromEpochMilliseconds(datePickerState.selectedDateMillis?: 0).toLocalDateTime(TimeZone.currentSystemDefault())
+                    calendar.set(java.util.Calendar.YEAR, date.year)
+                    calendar.set(java.util.Calendar.MONTH, date.monthNumber)
+                    calendar.set(java.util.Calendar.DAY_OF_MONTH, date.dayOfMonth)
+                    calendar.set(java.util.Calendar.HOUR_OF_DAY, timePickerState.hour)
+                    calendar.set(java.util.Calendar.MINUTE, timePickerState.minute)
+                    calendar.set(java.util.Calendar.SECOND, 0)
+                    calendar.set(java.util.Calendar.MILLISECOND, 0)
+
+                    Log.d("EditUpcomingEvent", "${Instant.fromEpochMilliseconds(calendar.timeInMillis).toLocalDateTime(TimeZone.currentSystemDefault())}")
+                    onPostpone(event, calendar.timeInMillis)
+
+                    onTpDismiss()
                 }) {
                     Text(stringResource(R.string.ok))
                 }
@@ -284,9 +356,4 @@ fun ConfirmEventDialog(display: Boolean = false, onDismiss: () -> Unit) {
             }
         }
     }
-}
-
-@Composable
-fun ConfirmPastEventDialog(display: Boolean = false, onDismiss: () -> Unit) {
-
 }

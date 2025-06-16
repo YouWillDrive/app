@@ -222,7 +222,7 @@ private fun NotificationItem(notification: Notification, onItemClick: (Notificat
 }
 
 @Composable
-private fun formatDate(dateTime: LocalDateTime): String {
+public fun formatDate(dateTime: LocalDateTime): String {
     val now = LocalDateTime.now()
 
     return when {

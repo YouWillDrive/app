@@ -24,7 +24,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.DatePickerState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -34,6 +33,7 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -54,17 +54,20 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.joinAll
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
-import kotlinx.datetime.toJavaLocalDate
 import kotlinx.datetime.toJavaLocalDateTime
-import kotlinx.datetime.toKotlinLocalDate
 import kotlinx.datetime.toLocalDateTime
 import ru.gd_alt.youwilldrive.R
 import ru.gd_alt.youwilldrive.data.DataStoreManager
 import ru.gd_alt.youwilldrive.models.Event
+import ru.gd_alt.youwilldrive.models.Placeholders
 import ru.gd_alt.youwilldrive.models.Role
 import ru.gd_alt.youwilldrive.models.User
 import ru.gd_alt.youwilldrive.ui.components.Calendar
@@ -72,7 +75,6 @@ import ru.gd_alt.youwilldrive.ui.components.EventDisplay
 import ru.gd_alt.youwilldrive.ui.components.MonthSelector
 import ru.gd_alt.youwilldrive.ui.navigation.Route
 import ru.gd_alt.youwilldrive.ui.screens.EventEdit.EventEditDialog
-import java.time.Instant
 import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -95,11 +97,6 @@ fun CalendarScreen(
     val eventEditOpen = remember { mutableStateOf(false) }
 
     var selectedEvent: Event? by remember { mutableStateOf(null) }
-    val datePickerState = rememberDatePickerState()
-    val timePickerState = rememberTimePickerState()
-    var timePickerOpen by remember { mutableStateOf(false) }
-    var datePickerOpen by remember { mutableStateOf(false) }
-
     val viewModel: CalendarViewModel = viewModel(factory = factory)
     val fetchState by viewModel.calendarState.collectAsState()
 
@@ -188,7 +185,9 @@ fun CalendarScreen(
 
         Button(
             { navController.navigate(Route.Events) },
-            Modifier.fillMaxWidth().padding(8.dp),
+            Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.primary
@@ -204,101 +203,80 @@ fun CalendarScreen(
 
         Log.d("CalendarScreen", "Selected date: ${LocalDate.of(currentYear, currentMonth, selectedDay ?: 1)}")
 
-        EventEditDialog(eventEditOpen,
+        EventEditDialog(
+            eventEditOpen,
             LocalDateTime(
                 currentYear, currentMonth, (selectedDay ?: 1),
-                0, 0, 0
+                12, 0, 0
             )
                 .toInstant(TimeZone.currentSystemDefault())
-                .toEpochMilliseconds())
+                .toEpochMilliseconds()
+        )
     }
 
-    if (selectedEvent != null) {
-        when {
-            selectedEvent?.let { // just to remove safe calls
-                it.date.toJavaLocalDateTime().isAfter(java.time.LocalDateTime.now().plusDays(1))
-            } ?: false -> {
-                val date: LocalDate = (selectedEvent?.date?.toJavaLocalDateTime()?.toLocalDate() ?: LocalDate.now())
-
-                EditUpcomingEvent(
-                    date,
-                    onDismiss = {selectedEvent = null},
-                    onPostpone = {datePickerOpen = true}
-                )
-            }
-            selectedEvent?.let { event ->
-                event.date.toJavaLocalDateTime().let {
-                    (
-                        it.isBefore(java.time.LocalDateTime.now())
-                        && it.isAfter(java.time.LocalDateTime.now().minusHours(12)) // TODO: X hours here
-                    )
-                }
-            } ?: false -> {
-                ConfirmPastEvent(selectedEvent?.date?.date ?: LocalDate.now().toKotlinLocalDate()) { selectedEvent = null }
-            }
-        }
-
-    }
-
-    if (datePickerOpen) {
-        val onDismiss = { datePickerOpen = false }
-        DatePickerDialog(
-            onDismissRequest = onDismiss,
-            confirmButton = {
-                TextButton({
-                    timePickerOpen = true
-                    onDismiss()
-                }) {
-                    Text(stringResource(R.string.ok))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = onDismiss) {
-                    Text(stringResource(R.string.cancel))
-                }
-            }
-        ) {
-            DatePicker(datePickerState)
-        }
-    }
-
-    if (timePickerOpen) {
-        val onDismiss = { timePickerOpen = false }
-        DatePickerDialog(
-            onDismissRequest = onDismiss,
-            confirmButton = {
-                TextButton({
-                    selectedEvent = null
-                    onDismiss() // TODO
-                }) {
-                    Text(stringResource(R.string.ok))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = onDismiss) {
-                    Text(stringResource(R.string.cancel))
-                }
-            }
-        ) {
-            Box(
-                Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                TimePicker(timePickerState)
-            }
-        }
-    }
+//    val currentEvent = selectedEvent
+//    if (currentEvent != null) {
+//        EditUpcomingEvent(
+//            currentEvent,
+//            onDismiss = {selectedEvent = null},
+//            onPostpone = { _: Event, _: Long -> }
+//        )
+//        ConfirmPastEvent(selectedEvent ?: Placeholders.DefaultEvent1) { selectedEvent = null }
+//    }
 }
 
 @Composable
-fun ConfirmPastEvent(date: kotlinx.datetime.LocalDate, onMainDismiss: () -> Unit = {}) {
+fun ConfirmPastEvent(event: Event?, onMainDismiss: () -> Unit = {}, onConfirm: (Int) -> Unit) {
     var duration by remember { mutableStateOf("1") };
+
+    if (event == null || !(event.date.toJavaLocalDateTime().let {(
+            it.isBefore(java.time.LocalDateTime.now())
+                    && it.isAfter(java.time.LocalDateTime.now().minusHours(12)))})) {
+        return
+    }
+
+    var isSameUser: MutableState<Boolean?> = remember { mutableStateOf(null) }
+    val context = LocalContext.current.applicationContext
+    val dataStoreManager = remember { DataStoreManager(context) }
+
+    LaunchedEffect(event.id) {
+        val userId = dataStoreManager.getUserId().first()
+        if (userId == null) {
+            isSameUser.value
+            return@LaunchedEffect
+        }
+        if (
+            (event.actualConfirmationValue("confirmation_types:to_happen") == -1L)
+            && User.fromId(userId)?.isInstructor() != null
+        ) {
+            Log.d("isUser", "same")
+            isSameUser.value = true
+            return@LaunchedEffect
+        }
+
+        else {
+            try {
+                isSameUser.value = (event.confirmations().sortedBy { it.date }.last {
+                    it.confirmationType()?.id == "confirmation_types:postpone"
+                }.confirmator()?.id ?: userId) == userId
+                Log.d("isUser", "same1")
+                isSameUser.value = true
+                return@LaunchedEffect
+            } catch (_: NoSuchElementException) {}
+        }
+
+        Log.d("isUser", "diff")
+        isSameUser.value = false
+    }
+
+    Log.d("isUser", "checking user")
+    if (isSameUser.value != false) return
 
     AlertDialog(
         onDismissRequest = onMainDismiss,
         title = {
             Text(
-                "Подтверждение прошедшего события " /*todo*/ + date.let {
+                "Подтверждение длительности события " + event.date.date.let {
                     "${it.dayOfMonth}.${it.monthNumber}.${it.year}"
                 }
             )
@@ -350,8 +328,13 @@ fun ConfirmPastEvent(date: kotlinx.datetime.LocalDate, onMainDismiss: () -> Unit
         confirmButton = {
             TextButton(
                 onClick = {
-                    // TODO
-                    onMainDismiss()
+                    try {
+                        onConfirm(duration.toInt())
+                        onMainDismiss()
+                    }
+                    catch (e: Exception) {
+                        // TODO: Add dialog
+                    }
                 }
             ) {
                 Text(stringResource(R.string.ok))
@@ -367,14 +350,63 @@ fun ConfirmPastEvent(date: kotlinx.datetime.LocalDate, onMainDismiss: () -> Unit
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EditUpcomingEvent(date: LocalDate, onDismiss: () -> Unit, onPostpone: () -> Unit) {
+fun EditUpcomingEvent(event: Event?, onDismiss: () -> Unit, onCancel: (Event) -> Unit, onPostpone: (Event, Long) -> Unit) {
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = Clock.System.now().toEpochMilliseconds()
+    )
+    val timePickerState = rememberTimePickerState()
+    var timePickerOpen by remember { mutableStateOf(false) }
+    var datePickerOpen by remember { mutableStateOf(false) }
+
+    if (event == null || event.date.toJavaLocalDateTime()
+            .isBefore(java.time.LocalDateTime.now().plusDays(1))) return
+
+    var isSameUser: MutableState<Boolean?> = remember { mutableStateOf(null) }
+    val context = LocalContext.current.applicationContext
+    val dataStoreManager = remember { DataStoreManager(context) }
+
+    LaunchedEffect(event.id) {
+        val userId = dataStoreManager.getUserId().first()
+        if (userId == null) {
+            isSameUser.value
+            return@LaunchedEffect
+        }
+        if (
+            (event.actualConfirmationValue("confirmation_types:to_happen") == -1L)
+            && User.fromId(userId)?.isInstructor() != null
+        ) {
+            Log.d("isUser", "same")
+            isSameUser.value = true
+            return@LaunchedEffect
+        }
+
+        else {
+            try {
+                isSameUser.value = (event.confirmations().sortedBy { it.date }.last {
+                    it.confirmationType()?.id == "confirmation_types:postpone"
+                }.confirmator()?.id ?: userId) == userId
+                Log.d("isUser", "same1")
+                isSameUser.value = true
+                return@LaunchedEffect
+            } catch (_: NoSuchElementException) {}
+        }
+
+        Log.d("isUser", "diff")
+        isSameUser.value = false
+    }
+
+    Log.d("isUser", "checking user")
+    if (isSameUser.value != false) return
+
     BasicAlertDialog(onDismiss) {
         Card {
             Column(
                 Modifier.padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("${date.dayOfMonth}.${date.monthValue}.${date.year}") // todo maybe
+                event.let {
+                    Text("Перенести событие в ${it.date.date.dayOfMonth}.${it.date.date.monthNumber}.${it.date.date.year}?")
+                }
 
                 Spacer(Modifier.height(20.dp))
 
@@ -391,10 +423,13 @@ fun EditUpcomingEvent(date: LocalDate, onDismiss: () -> Unit, onPostpone: () -> 
                         textAlign = TextAlign.Center
                     )
                     Text(
-                        stringResource(R.string.cancel), // TODO: "cancel event"
+                        stringResource(R.string.cancel_event),
                         Modifier
                             .weight(0.5f)
-                            .clickable { onDismiss() }, // TODO
+                            .clickable {
+                                onCancel(event)
+                                onDismiss()
+                           },
                         color = MaterialTheme.colorScheme.primary,
                         textAlign = TextAlign.Center
                     )
@@ -402,11 +437,77 @@ fun EditUpcomingEvent(date: LocalDate, onDismiss: () -> Unit, onPostpone: () -> 
                         stringResource(R.string.postpone),
                         Modifier
                             .weight(0.5f)
-                            .clickable { onPostpone() },  // TODO
+                            .clickable { datePickerOpen = true },
                         color = MaterialTheme.colorScheme.primary,
                         textAlign = TextAlign.Center
                     )
                 }
+            }
+        }
+    }
+
+    if (datePickerOpen) {
+        val onDpDismiss = { datePickerOpen = false }
+        DatePickerDialog(
+            onDismissRequest = onDpDismiss,
+            confirmButton = {
+                TextButton(onClick@{
+                    if (datePickerState.selectedDateMillis == null) {
+                        return@onClick
+                    }
+                    timePickerOpen = true
+                    onDpDismiss()
+                }) {
+                    Text(stringResource(R.string.ok))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDpDismiss) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        ) {
+            DatePicker(datePickerState)
+        }
+    }
+
+    if (timePickerOpen) {
+        val onTpDismiss = { timePickerOpen = false }
+        DatePickerDialog(
+            onDismissRequest = onTpDismiss,
+            confirmButton = {
+                TextButton({
+                    onDismiss()
+
+                    val calendar = java.util.Calendar.getInstance()
+                    val date = Instant.fromEpochMilliseconds(datePickerState.selectedDateMillis?: 0).toLocalDateTime(TimeZone.currentSystemDefault())
+                    calendar.set(java.util.Calendar.YEAR, date.year)
+                    calendar.set(java.util.Calendar.MONTH, date.monthNumber)
+                    calendar.set(java.util.Calendar.DAY_OF_MONTH, date.dayOfMonth)
+                    calendar.set(java.util.Calendar.HOUR_OF_DAY, timePickerState.hour)
+                    calendar.set(java.util.Calendar.MINUTE, timePickerState.minute)
+                    calendar.set(java.util.Calendar.SECOND, 0)
+                    calendar.set(java.util.Calendar.MILLISECOND, 0)
+
+                    Log.d("EditUpcomingEvent", "${Instant.fromEpochMilliseconds(calendar.timeInMillis).toLocalDateTime(TimeZone.currentSystemDefault())}")
+                    onPostpone(event, calendar.timeInMillis)
+
+                    onTpDismiss()
+                }) {
+                    Text(stringResource(R.string.ok))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onTpDismiss) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        ) {
+            Box(
+                Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                TimePicker(timePickerState)
             }
         }
     }
