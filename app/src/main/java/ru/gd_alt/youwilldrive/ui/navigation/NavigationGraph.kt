@@ -55,7 +55,7 @@ fun NavigationGraph(
             arguments = listOf(navArgument("recepientId") { type = NavType.StringType })
         ) { backStackEntry ->
             val recepientId = backStackEntry.arguments?.getString("recepientId")
-            ChatScreen(recepientId = recepientId)
+            ChatScreen(recipientId = recepientId)
         }
 
         composable<Route.Events> {

@@ -28,8 +28,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -86,13 +84,13 @@ fun LocalDate.toDateString(): String {
 @Preview(showBackground = true)
 @Composable
 fun ChatScreen(
-    recepientId: String? = null,
+    recipientId: String? = null,
     initialMessages: List<ChatMessage> = listOf<ChatMessage>()
 ) {
     val context = LocalContext.current.applicationContext
     val dataStoreManager = remember { DataStoreManager(context) }
     val factory = remember(dataStoreManager) {
-        ChatViewModelFactory(dataStoreManager, recepientId.toString())
+        ChatViewModelFactory(dataStoreManager, recipientId.toString())
     }
 
     val viewModel: ChatViewModel = viewModel(factory = factory)
@@ -109,8 +107,8 @@ fun ChatScreen(
 
     var newMessage by viewModel.newMessage
 
-    if (recepientId != null) {
-        Log.i("ChatScreen", "Recipient ID: $recepientId")
+    if (recipientId != null) {
+        Log.i("ChatScreen", "Recipient ID: $recipientId")
     }
 
     // Scroll to the bottom when the list of displayed messages (including system messages) changes
@@ -126,7 +124,7 @@ fun ChatScreen(
 
         // Display the recipient's name at the top
         Text(
-            text = viewModel.recipientName.collectAsState().value.toString(),
+            text = viewModel.recipientName.collectAsState().value ?: "Загрузка...",
             style = MaterialTheme.typography.labelLarge.copy(textAlign = TextAlign.Center),
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier
