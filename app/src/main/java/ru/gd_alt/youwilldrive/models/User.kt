@@ -1,5 +1,6 @@
 package ru.gd_alt.youwilldrive.models
 
+import android.util.Log
 import com.appmattus.crypto.Algorithm
 import kotlinx.coroutines.runBlocking
 import ru.gd_alt.youwilldrive.data.client.Connection
@@ -22,12 +23,12 @@ class User(override val id: String, var avatarPhoto: String, var phoneNum: Strin
         }
 
         fun encryptPassword(password: String): String {
-            val password = runBlocking {
-                val result = Connection.cl.query("SELECT * FROM crypto::blake3(\$password)", mapOf("password" to "12345678")) as List<Map<*, List<*>>>
+            val result = runBlocking {
+                val result = Connection.cl.query("SELECT * FROM crypto::blake3(\$password)", mapOf("password" to password)) as List<Map<*, List<*>>>
                 return@runBlocking result[0]["result"]?.get(0)!!.toString()
             }
 
-            return password
+            return result
         }
 
         suspend fun authorize(email: String?, phone: String?, password: String): User? {

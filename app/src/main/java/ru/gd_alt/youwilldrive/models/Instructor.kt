@@ -1,5 +1,9 @@
 package ru.gd_alt.youwilldrive.models
 
+import android.util.Log
+import ru.gd_alt.youwilldrive.data.client.Connection
+import ru.gd_alt.youwilldrive.data.models.RecordID
+
 class Instructor(override val id: String) : Participant {
     companion object: ModelCompanion<Instructor> {
         override val tableName: String = "instructor"
@@ -18,16 +22,29 @@ class Instructor(override val id: String) : Participant {
     }
 
     suspend fun cadets() : MutableList<Cadet> {
-        val assignedPlanPointsMaps = fetchRelatedList<PlanHistoryPoint>("assigned_instructor", PlanHistoryPoint::fromId, true)
+        val actualPlanPoints = (
+            Connection.cl.query(
+                "(\n" +
+                "    SELECT ->of_cadet->cadet.id AS cadetId\n" +
+                "    FROM plan_history\n" +
+                "    WHERE date_time IN (\n" +
+                "        SELECT ->of_cadet->cadet.id AS cId, time::max(date_time) as dt\n" +
+                "        FROM plan_history\n" +
+                "        GROUP BY cId\n" +
+                "    ).map(|\$i| \$i.dt)\n" +
+                ").map(|\$j| \$j[\"cadetId\"][0])"
+            ) as List<Map<String, List<RecordID>>>
+        )[0]["result"] as List<RecordID>
 
-        // Filter to get the newest plan history point for each cadet
-        val assignedPlanPoints = assignedPlanPointsMaps.groupBy { it.ofCadet() }.map { (_, planPoints) -> planPoints.maxByOrNull { it.date } }
-
-        // Get the cadets from the plan history points
         val cadets = mutableListOf<Cadet>()
-        for (planPoint in assignedPlanPoints) {
-            val cadet = planPoint?.ofCadet()
-            if (cadet != null) {
+
+        for (planPoint in actualPlanPoints) {
+            Log.d("cadets", planPoint.recordId)
+            val cadet = Cadet.fromId(
+                planPoint.toString()
+            )
+            Log.d("cadets", "$cadet")
+            if (cadet != null && cadet.actualPlanPoint()?.assignedInstructor()?.id == id) {
                 cadets.add(cadet)
             }
         }

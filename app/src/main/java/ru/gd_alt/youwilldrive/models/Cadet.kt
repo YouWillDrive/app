@@ -1,6 +1,8 @@
 package ru.gd_alt.youwilldrive.models
 
 import ru.gd_alt.youwilldrive.data.client.Connection
+import android.util.Log
+import ru.gd_alt.youwilldrive.data.models.RecordID
 
 
 class Cadet(override val id: String, var hoursAlready: Int, val expansions: Map<String, Any?> = mapOf()) : Participant {
@@ -23,10 +25,23 @@ class Cadet(override val id: String, var hoursAlready: Int, val expansions: Map<
             )
         }
 
-        suspend fun allWithPhotos(): MutableList<Cadet> {
-            val rawObj = (Connection.cl.query(
-                "SELECT *, (<-is_cadet<-users)[0].avatar AS avatar FROM cadet"
-            ) as List<Map<*, *>>)[0]["result"] as List<Map<*, *>>
+        suspend fun allWithPhotos(instructorUserId: String): MutableList<Cadet> {
+            val (tableName, recordId) = instructorUserId.split(":")
+            val rawObj = (
+                Connection.cl.query(
+                    "SELECT * FROM (SELECT\n" +
+                    "(SELECT * FROM (SELECT <-is_cadet<-users AS user FROM \$parent)[0].user[0])[0].avatar as avatar,\n" +
+                    "id,\n" +
+                    "hours_already,\n" +
+                    "(SELECT * FROM <-of_cadet<-plan_history ORDER BY date_time DESC LIMIT 1)[0]->assigned_instructor->instructor[0][0]<-is_instructor<-users[0][0].id as instructor_id\n" +
+                    "FROM cadet) WHERE instructor_id = \$instructor_id;;",
+                    mapOf(
+                        "instructor_id" to RecordID(tableName, recordId)
+                    )
+                ) as List<Map<*, *>>
+            )[0]["result"] as List<Map<*, *>>
+
+            Log.d("allWithPhotos", "${rawObj}")
 
             return rawObj.map { fromDictionary(it) }.toMutableList()
         }

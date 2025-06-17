@@ -149,7 +149,7 @@ fun EventEditDialog(
                         )
                     }
                 }
-
+                // maybe needed for later
 //                Row(
 //                    Modifier
 //                        .padding(vertical = 12.dp)
@@ -282,8 +282,7 @@ fun EventEditDialog(
                     val selectedTimeMillis = TimeUnit.HOURS.toMillis(timePickerState.hour.toLong()) +
                             TimeUnit.MINUTES.toMillis(timePickerState.minute.toLong())
 
-                    // Combine date and time. Be careful with time zones and milliseconds precision.
-                    // A robust solution might involve converting dateMillis to a LocalDate first.
+                    // Combine date and time
                     val selectedLocalDate = Instant.ofEpochMilli(selectedDateMillis)
                         .toKotlinInstant()
                         .toLocalDateTime(TimeZone.currentSystemDefault()).date
@@ -338,7 +337,7 @@ fun EventEditDialog(
 
     if (timePickerOpen) {
         val onDismiss = { timePickerOpen = false }
-        DatePickerDialog( // Note: Using DatePickerDialog wrapper for TimePicker, which is okay.
+        DatePickerDialog(
             onDismissRequest = onDismiss,
             confirmButton = {
                 TextButton({

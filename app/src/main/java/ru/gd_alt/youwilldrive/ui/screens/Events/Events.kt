@@ -213,7 +213,7 @@ fun ConfirmEventDialog(event: Event?, onDismiss: () -> Unit, onConfirm: (Int) ->
     var timePickerOpen by remember { mutableStateOf(false) }
     var datePickerOpen by remember { mutableStateOf(false) }
 
-    if (event == null || event.date.toJavaLocalDateTime().isAfter(java.time.LocalDateTime.now())) return
+    if (event == null || event.date.toJavaLocalDateTime().isBefore(java.time.LocalDateTime.now())) return
     var isSameUser: MutableState<Boolean?> = remember { mutableStateOf(null) }
     val context = LocalContext.current.applicationContext
     val dataStoreManager = remember { DataStoreManager(context) }
@@ -221,7 +221,7 @@ fun ConfirmEventDialog(event: Event?, onDismiss: () -> Unit, onConfirm: (Int) ->
     LaunchedEffect(event.id) {
         val userId = dataStoreManager.getUserId().first()
         if (userId == null) {
-            isSameUser.value
+            isSameUser.value = true
             return@LaunchedEffect
         }
         if (
@@ -237,7 +237,7 @@ fun ConfirmEventDialog(event: Event?, onDismiss: () -> Unit, onConfirm: (Int) ->
             try {
                 isSameUser.value = (event.confirmations().sortedBy { it.date }.last {
                     it.confirmationType()?.id == "confirmation_types:postpone"
-                }.confirmator()?.id ?: userId) == userId
+                }.confirmator()?.id ?: event.ofInstructor()?.id) == userId
                 Log.d("isUser", "same1")
                 isSameUser.value = true
                 return@LaunchedEffect

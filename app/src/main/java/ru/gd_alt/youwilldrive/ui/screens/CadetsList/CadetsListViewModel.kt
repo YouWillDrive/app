@@ -53,7 +53,7 @@ class CadetListsViewModel(private val dataStoreManager: DataStoreManager) : View
                 val instructor = user?.isInstructor()
                 if (instructor != null) {
                     var cadetsList = instructor.cadets()
-                    val allCadetsList = Cadet.allWithPhotos()
+                    val allCadetsList = Cadet.allWithPhotos(instructor.me()?.id ?: "")
 
                     cadetsList = cadetsList.map { cadet ->
                         val fullCadet = allCadetsList.firstOrNull { it.id == cadet.id }
@@ -64,12 +64,12 @@ class CadetListsViewModel(private val dataStoreManager: DataStoreManager) : View
                             val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
                             val bitmapAvatar = bitmap?.asImageBitmap()
                             _cadetAvatars.value = (_cadetAvatars.value + (cadet.id to bitmapAvatar))
-                            _unreadMessageCounts.value = _unreadMessageCounts.value + (
-                                    cadet.id to Message.countUnreadInChat(
-                                        Chat.byParticipants(cadet.me()!!, user)!!.id,
-                                        user.id
-                                    )
+                            _unreadMessageCounts.value += (
+                                cadet.id to Message.countUnreadInChat(
+                                    Chat.byParticipants(cadet.me()!!, user)!!.id,
+                                    user.id
                                 )
+                            )
                         }
                         else {
                             _cadetAvatars.value = (_cadetAvatars.value + (cadet.id to null))
