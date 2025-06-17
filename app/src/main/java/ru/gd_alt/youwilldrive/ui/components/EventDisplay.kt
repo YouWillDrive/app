@@ -207,13 +207,13 @@ fun EventItem(event: Event, myRole: Role, onClick: (Event) -> Unit = {}) {
                 modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    text = eventType?.name ?: "XXX",
+                    text = eventType?.name ?: "Загрузка события...",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold
                 )
 
                 Text(
-                    text = "${displayParticipant?.name} ${displayParticipant?.patronymic} ${displayParticipant?.surname}",
+                    text = displayParticipant?.fullName ?: "Загрузка имени...",
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis

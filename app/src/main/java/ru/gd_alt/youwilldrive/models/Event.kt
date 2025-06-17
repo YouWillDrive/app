@@ -31,6 +31,13 @@ class Event(override val id: String, var date: LocalDateTime) : Identifiable {
     val confirmed: Boolean
         get() = runBlocking { actualConfirmationValue("confirmation_types:to_happen") == 1L }
 
+    val durationAsked: Boolean
+        get() = runBlocking { actualConfirmationValue("confirmation_types:duration") != -1L }
+
+    val durationAccepted: Boolean
+        get() = runBlocking { actualConfirmationValue("confirmation_types:duration_accept") == 1L }
+
+
     suspend fun eventType(): EventType? {
         return fetchRelatedSingle<EventType>("of_type", EventType::fromId)
     }
@@ -79,8 +86,12 @@ class Event(override val id: String, var date: LocalDateTime) : Identifiable {
         confirm(userId,"confirmation_types:to_happen", if (accept) 1 else 0)
     }
 
-    suspend fun confirmDuration(userId: String, value: Int) {
-        confirm(userId, "confirmation_types:duration", value.toLong())
+    suspend fun confirmDuration(userId: String, value: Long) {
+        confirm(userId, "confirmation_types:duration", value)
+    }
+
+    suspend fun acceptDuration(userId: String, accept: Boolean = true) {
+        confirm(userId,"confirmation_types:duration_accept", if (accept) 1 else 0)
     }
 
     suspend fun postpone(userId: String, epochMillis: Long) {
@@ -100,11 +111,36 @@ class Event(override val id: String, var date: LocalDateTime) : Identifiable {
     }
 
     suspend fun actualConfirmationValue(key: String): Long {
+        if (key.isEmpty() || !key.contains(':')) {
+            return -1L
+        }
+        val (tableName, recordId) = key.split(':')
         return try {
-            confirmations().sortedBy { it.date }.last {
-                it.confirmationType()?.id == key
-            }.value
-        } catch (e: NoSuchElementException) {
+            val result = (
+                Connection.cl.query(
+                    "SELECT confirmation_value, date_time\n" +
+                    "FROM confirmations\n" +
+                    "WHERE (->of_confirmation_type->confirmation_types)[0] = \$type_id\n" +
+                    "    AND (->of_event->event)[0] = \$event_id\n" +
+                    "ORDER BY date_time DESC\n" +
+                    "LIMIT 1;",
+                    mapOf(
+                        "type_id" to RecordID(tableName, recordId),
+                        "event_id" to RecordID(Event.tableName, this.id.split(':').last())
+                    )
+                ) as List<Map<String, List<Map<String, Long>>>>
+            )[0]["result"]
+
+            if (result?.isEmpty() == true /* in case result is null */) {
+                Log.d("actualConfirmationValue", "No $key confirmations for $id")
+                return -1
+            }
+
+            val value = result?.get(0)?.get("confirmation_value")
+
+            return value ?: -1L
+        } catch (e: Exception) {
+            Log.e("actualConfirmationValue", "error", e)
             -1
         }
     }

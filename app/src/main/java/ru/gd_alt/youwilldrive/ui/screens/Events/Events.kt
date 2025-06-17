@@ -40,7 +40,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -59,7 +58,6 @@ import ru.gd_alt.youwilldrive.R
 import ru.gd_alt.youwilldrive.data.DataStoreManager
 import ru.gd_alt.youwilldrive.models.Event
 import ru.gd_alt.youwilldrive.models.Placeholders.DefaultEvent
-import ru.gd_alt.youwilldrive.models.Placeholders.DefaultEvent1
 import ru.gd_alt.youwilldrive.models.Role
 import ru.gd_alt.youwilldrive.models.User
 import ru.gd_alt.youwilldrive.ui.components.EventItem
@@ -93,7 +91,7 @@ fun EventsScreen() {
 
         myRole = User.fromId(dataStoreManager.getUserId().firstOrNull().toString())?.role()
     }
-    val events = viewModel.events.collectAsState().value ?: listOf(DefaultEvent, DefaultEvent1)
+    val events = viewModel.events.collectAsState().value ?: listOf(DefaultEvent)
 
     Column {
         TabRow(selectedTabIndex = selectedTabIndex) {
@@ -185,16 +183,33 @@ fun EventsScreen() {
                     }
 
                     val currentEvent = selectedEvent
-                    if (currentEvent != null) {
-                        ConfirmPastEvent(
-                            currentEvent,
-                            {
-                                selectedEvent = null
-                            },
-                            {
-                                viewModel.confirmDuration(currentEvent.id, it)
-                            }
-                        )
+                    if (currentEvent != null && !currentEvent.durationAccepted) {
+                        if (currentEvent.durationAsked) {
+                            ConfirmDurationDialog(
+                                currentEvent,
+                                {
+                                    selectedEvent = null
+                                },
+                                {
+                                    viewModel.acceptDuration(currentEvent.id)
+                                },
+                                {
+                                    viewModel.declineDuration(currentEvent.id)
+                                    viewModel.confirmDuration(currentEvent.id, it)
+                                }
+                            )
+                        }
+                        else {
+                            ConfirmPastEvent(
+                                currentEvent,
+                                {
+                                    selectedEvent = null
+                                },
+                                {
+                                    viewModel.confirmDuration(currentEvent.id, it)
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -239,7 +254,6 @@ fun ConfirmEventDialog(event: Event?, onDismiss: () -> Unit, onConfirm: (Int) ->
                     it.confirmationType()?.id == "confirmation_types:postpone"
                 }.confirmator()?.id ?: event.ofInstructor()?.id) == userId
                 Log.d("isUser", "same1")
-                isSameUser.value = true
                 return@LaunchedEffect
             } catch (_: NoSuchElementException) {}
         }
@@ -355,5 +369,108 @@ fun ConfirmEventDialog(event: Event?, onDismiss: () -> Unit, onConfirm: (Int) ->
                 TimePicker(timePickerState)
             }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ConfirmDurationDialog(event: Event?, onDismiss: () -> Unit, onConfirm: () -> Unit, onReconfirm: (Long) -> Unit) {
+    if (event == null) return
+
+    val isSameUser: MutableState<Boolean?> = remember { mutableStateOf(null) }
+    val requiresConfirmation: MutableState<Boolean?> = remember { mutableStateOf(null) }
+    var askedDuration: Long? by remember { mutableStateOf(null) }
+    val context = LocalContext.current.applicationContext
+    val dataStoreManager = remember { DataStoreManager(context) }
+    var declineDurationOpen by remember { mutableStateOf(false) }
+
+    LaunchedEffect(event.id) {
+        requiresConfirmation.value = !event.durationAccepted
+        askedDuration = event.actualConfirmationValue("confirmation_types:duration")
+        val userId = dataStoreManager.getUserId().first()
+        if (userId == null) {
+            isSameUser.value = true
+            return@LaunchedEffect
+        }
+        try {
+            Log.d("isUser", "${event.confirmations().sortedBy { it.date }.last {
+                it.confirmationType()?.id == "confirmation_types:duration"
+            }.confirmator()?.id} ${userId} ${event.confirmations().sortedBy { it.date }.last {
+                it.confirmationType()?.id == "confirmation_types:duration"
+            }.confirmator()?.id == userId}")
+            isSameUser.value = (event.confirmations().sortedBy { it.date }.last {
+                it.confirmationType()?.id == "confirmation_types:duration"
+            }.confirmator()?.id ?: userId) == userId
+            Log.d("isUser", "same")
+            return@LaunchedEffect
+        } catch (_: NoSuchElementException) {}
+
+        Log.d("isUser", "diff")
+        isSameUser.value = false
+
+    }
+
+    Log.d("ConfirmDurationDialog", "checking requirements")
+    Log.d("ConfirmDurationDialog", "${isSameUser.value} ${requiresConfirmation.value}")
+    if (isSameUser.value == true || requiresConfirmation.value == false) return
+
+    BasicAlertDialog(onDismiss) {
+        Card {
+            Column(
+                Modifier.padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("Занятие длилось ${askedDuration ?: "..."} часов?")
+
+                Spacer(Modifier.height(20.dp))
+
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Text(
+                        stringResource(R.string.cancel),
+                        Modifier
+                            .weight(0.5f)
+                            .clickable { onDismiss() },
+                        color = MaterialTheme.colorScheme.primary,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        stringResource(R.string.no),
+                        Modifier
+                            .weight(0.5f)
+                            .clickable {
+                                declineDurationOpen = true
+                                Log.d("ConfirmDurationDialog", "clicked")
+                            },
+                        color = MaterialTheme.colorScheme.primary,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        stringResource(R.string.yes),
+                        Modifier
+                            .weight(0.5f)
+                            .clickable { onConfirm(); onDismiss() },
+                        color = MaterialTheme.colorScheme.primary,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
+    }
+
+    Log.d("ConfirmDurationDialog", "$declineDurationOpen $event")
+    if (declineDurationOpen) {
+        ConfirmPastEvent(
+            event,
+            onDismiss,
+            onConfirm = {
+                if (it == askedDuration) {
+                    onConfirm()
+                }
+                else onReconfirm(it)
+            }
+        )
     }
 }

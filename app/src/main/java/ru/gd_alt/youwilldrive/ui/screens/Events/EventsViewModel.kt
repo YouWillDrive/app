@@ -70,7 +70,6 @@ class EventsViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             val actualUserId = userId.first { !it.isNullOrEmpty() }.toString()
             try {
-                val user: User? = User.fromId(actualUserId)
                 val event = Event.fromId(eventId)!!
 
                 event.confirmToHappen(actualUserId, true)
@@ -78,7 +77,7 @@ class EventsViewModel(
                     "Событие на ${event.date.date} подтверждено!",
                     "Подтверждено событие в ${event.date}",
                     emptyList(),
-                    user!!.isCadet()!!.actualPlanPoint()!!.assignedInstructor()!!.me()!!.id
+                    getOppositeUser(actualUserId, event)
                 )
             } catch (e: Exception) {
                 Log.e("acceptEvent", "Error while confirming event", e)
@@ -91,7 +90,6 @@ class EventsViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             val actualUserId = userId.first { !it.isNullOrEmpty() }.toString()
             try {
-                val user: User? = User.fromId(actualUserId)
                 val event = Event.fromId(eventId)!!
 
                 event.confirmToHappen(actualUserId, true)
@@ -99,7 +97,7 @@ class EventsViewModel(
                     "Событие на ${event.date.date} отменено!",
                     "Отменено событие в ${event.date}",
                     emptyList(),
-                    user!!.isCadet()!!.actualPlanPoint()!!.assignedInstructor()!!.me()!!.id
+                    getOppositeUser(actualUserId, event)
                 )
             } catch (e: Exception) {
                 Log.e("acceptEvent", "Error while declining event", e)
@@ -107,7 +105,7 @@ class EventsViewModel(
         }
     }
 
-    fun confirmDuration(eventId: String, hours: Int) {
+    fun confirmDuration(eventId: String, hours: Long) {
         viewModelScope.launch(Dispatchers.IO) {
             val actualUserId = userId.first { !it.isNullOrEmpty() }.toString()
             try {
@@ -118,28 +116,78 @@ class EventsViewModel(
         }
     }
 
+    fun acceptDuration(eventId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val actualUserId = userId.first { !it.isNullOrEmpty() }.toString()
+            try {
+                val event = Event.fromId(eventId)!!
+
+                event.acceptDuration(actualUserId, true)
+                Notification.postNotification(
+                    "Длительность события подтверждена!",
+                    "Событие длилось ${event.actualConfirmationValue("confirmation_types:duration")} ч.",
+                    emptyList(),
+                    getOppositeUser(actualUserId, event)
+                )
+            } catch (e: Exception) {
+                Log.e("acceptEvent", "Error while accepting duration", e)
+            }
+        }
+    }
+
+    fun declineDuration(eventId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val actualUserId = userId.first { !it.isNullOrEmpty() }.toString()
+            try {
+                val event = Event.fromId(eventId)!!
+                event.acceptDuration(actualUserId, false)
+                Notification.postNotification(
+                    "Длительность события отклонена!",
+                    "Необходимо подтвердить снова, событие длилось не ${event.actualConfirmationValue("confirmation_types:duration")} ч.",
+                    emptyList(),
+                    getOppositeUser(actualUserId, event)
+                )
+            } catch (e: Exception) {
+                Log.e("acceptEvent", "Error while declining duration", e)
+            }
+        }
+    }
+
     fun postpone(event: Event, millis: Long) {
         viewModelScope.launch {
-            val userId = userId.first { !it.isNullOrEmpty() }.toString()
+            val actualUserId = userId.first { !it.isNullOrEmpty() }.toString()
 
-            var receiver = ""
-            val instructorUserId = event.ofInstructor()?.me()?.id
-            val cadetUserId = event.ofCadet()?.me()?.id
-
-            if (cadetUserId == userId) {
-                receiver = instructorUserId ?: ""
-            }
-            if (instructorUserId == userId) {
-                receiver = cadetUserId ?: ""
-            }
-
-            event.postpone(userId, millis)
+            event.postpone(actualUserId, millis)
             Notification.postNotification(
                 "Перенос занятия",
                 "Событие на ${{ Instant.fromEpochMilliseconds(millis).toLocalDateTime(TimeZone.currentSystemDefault()).date}} перенесено. Требуется подтверждение.",
                 emptyList(),
-                receiver
+                getOppositeUser(actualUserId, event)
             )
         }
     }
+}
+
+private suspend fun getOppositeUser(userId: String, event: Event): String {
+    var receiver = ""
+    val instructorUserId = event.ofInstructor()?.me()?.id
+    val cadetUserId = event.ofCadet()?.me()?.id
+
+    if (cadetUserId == userId) {
+        receiver = instructorUserId ?: ""
+    }
+    if (instructorUserId == userId) {
+        receiver = cadetUserId ?: ""
+    }
+
+    if (receiver.isEmpty()) {
+        Notification.postNotification(
+            "Не удалось отправить уведомление",
+            "Вам необходимо самостоятельно связаться инструктором/курсантом, касательно вашего последнего действия.",
+            emptyList(),
+            userId
+        )
+    }
+
+    return receiver
 }

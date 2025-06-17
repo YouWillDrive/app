@@ -25,14 +25,19 @@ class Instructor(override val id: String) : Participant {
         val actualPlanPoints = (
             Connection.cl.query(
                 "(\n" +
-                "    SELECT ->of_cadet->cadet.id AS cadetId\n" +
-                "    FROM plan_history\n" +
-                "    WHERE date_time IN (\n" +
-                "        SELECT ->of_cadet->cadet.id AS cId, time::max(date_time) as dt\n" +
-                "        FROM plan_history\n" +
-                "        GROUP BY cId\n" +
-                "    ).map(|\$i| \$i.dt)\n" +
-                ").map(|\$j| \$j[\"cadetId\"][0])"
+                "    SELECT * FROM (\n" +
+                "        SELECT id\n" +
+                "        FROM cadet\n" +
+                "    )\n" +
+                "    WHERE (\n" +
+                "        (\n" +
+                "            SELECT *\n" +
+                "            FROM <-of_cadet<-plan_history\n" +
+                "            ORDER BY date_time DESC\n" +
+                "            LIMIT 1\n" +
+                "        )[0]->assigned_instructor->instructor[0][0]<-is_instructor<-users[0][0].id\n" +
+                "    ) = users:lnqcd1tlfhawtrv5mclb\n" +
+                ").map(|\$v| \$v.id)"
             ) as List<Map<String, List<RecordID>>>
         )[0]["result"] as List<RecordID>
 

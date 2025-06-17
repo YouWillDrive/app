@@ -119,7 +119,7 @@ fun InstructorInfo(
 
 @Composable
 fun Cars(
-    cars: List<Car> = listOf(DefaultCar1, DefaultCar2, DefaultCar3, DefaultCar4)
+    cars: List<Car> = listOf(DefaultCar1)
 ) {
     Column(
         Modifier

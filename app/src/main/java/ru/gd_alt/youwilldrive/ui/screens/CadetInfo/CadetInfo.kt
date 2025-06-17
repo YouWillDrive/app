@@ -112,7 +112,7 @@ fun CadetInfo(
 
     Spacer(Modifier.height(20.dp))
 
-    InstructorCard(instructorUser ?: DefaultUser1, instructorAvatar = instructorAvatarBitmap, unreadMessagesCount) { navController.navigate("${Route.Chat}/${instructorUser!!.id}") }
+    InstructorCard(instructorUser ?: DefaultUser, instructorAvatar = instructorAvatarBitmap, unreadMessagesCount) { navController.navigate("${Route.Chat}/${instructorUser!!.id}") }
 }
 
 @Composable

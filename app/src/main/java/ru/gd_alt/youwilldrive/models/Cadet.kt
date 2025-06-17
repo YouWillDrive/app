@@ -34,7 +34,7 @@ class Cadet(override val id: String, var hoursAlready: Int, val expansions: Map<
                     "id,\n" +
                     "hours_already,\n" +
                     "(SELECT * FROM <-of_cadet<-plan_history ORDER BY date_time DESC LIMIT 1)[0]->assigned_instructor->instructor[0][0]<-is_instructor<-users[0][0].id as instructor_id\n" +
-                    "FROM cadet) WHERE instructor_id = \$instructor_id;;",
+                    "FROM cadet) WHERE instructor_id = \$instructor_id;",
                     mapOf(
                         "instructor_id" to RecordID(tableName, recordId)
                     )

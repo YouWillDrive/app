@@ -213,64 +213,17 @@ fun CalendarScreen(
                 .toEpochMilliseconds()
         )
     }
-
-//    val currentEvent = selectedEvent
-//    if (currentEvent != null) {
-//        EditUpcomingEvent(
-//            currentEvent,
-//            onDismiss = {selectedEvent = null},
-//            onPostpone = { _: Event, _: Long -> }
-//        )
-//        ConfirmPastEvent(selectedEvent ?: Placeholders.DefaultEvent1) { selectedEvent = null }
-//    }
 }
 
 @Composable
-fun ConfirmPastEvent(event: Event?, onMainDismiss: () -> Unit = {}, onConfirm: (Int) -> Unit) {
+fun ConfirmPastEvent(event: Event?, onMainDismiss: () -> Unit = {}, onConfirm: (Long) -> Unit) {
     var duration by remember { mutableStateOf("1") };
 
-    if (event == null || !(event.date.toJavaLocalDateTime().let {(
-            it.isBefore(java.time.LocalDateTime.now())
-                    && it.isAfter(java.time.LocalDateTime.now().minusHours(12)))})) {
+    if (event == null) {
         return
     }
 
-    var isSameUser: MutableState<Boolean?> = remember { mutableStateOf(null) }
-    val context = LocalContext.current.applicationContext
-    val dataStoreManager = remember { DataStoreManager(context) }
-
-    LaunchedEffect(event.id) {
-        val userId = dataStoreManager.getUserId().first()
-        if (userId == null) {
-            isSameUser.value
-            return@LaunchedEffect
-        }
-        if (
-            (event.actualConfirmationValue("confirmation_types:to_happen") == -1L)
-            && User.fromId(userId)?.isInstructor() != null
-        ) {
-            Log.d("isUser", "same")
-            isSameUser.value = true
-            return@LaunchedEffect
-        }
-
-        else {
-            try {
-                isSameUser.value = (event.confirmations().sortedBy { it.date }.last {
-                    it.confirmationType()?.id == "confirmation_types:postpone"
-                }.confirmator()?.id ?: userId) == userId
-                Log.d("isUser", "same1")
-                isSameUser.value = true
-                return@LaunchedEffect
-            } catch (_: NoSuchElementException) {}
-        }
-
-        Log.d("isUser", "diff")
-        isSameUser.value = false
-    }
-
-    Log.d("isUser", "checking user")
-    if (isSameUser.value != false) return
+    Log.d("ConfirmPastEvent", event.toString())
 
     AlertDialog(
         onDismissRequest = onMainDismiss,
@@ -329,7 +282,7 @@ fun ConfirmPastEvent(event: Event?, onMainDismiss: () -> Unit = {}, onConfirm: (
             TextButton(
                 onClick = {
                     try {
-                        onConfirm(duration.toInt())
+                        onConfirm(duration.toLong())
                         onMainDismiss()
                     }
                     catch (e: Exception) {
@@ -386,7 +339,6 @@ fun EditUpcomingEvent(event: Event?, onDismiss: () -> Unit, onCancel: (Event) ->
                     it.confirmationType()?.id == "confirmation_types:postpone"
                 }.confirmator()?.id ?: userId) == userId
                 Log.d("isUser", "same1")
-                isSameUser.value = true
                 return@LaunchedEffect
             } catch (_: NoSuchElementException) {}
         }

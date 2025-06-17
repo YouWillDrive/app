@@ -149,47 +149,6 @@ fun EventEditDialog(
                         )
                     }
                 }
-                // maybe needed for later
-//                Row(
-//                    Modifier
-//                        .padding(vertical = 12.dp)
-//                        .fillMaxWidth(),
-//                    horizontalArrangement = Arrangement.SpaceBetween,
-//                    verticalAlignment = Alignment.CenterVertically
-//                ) {
-//                    Text(
-//                        stringResource(R.string.duration),
-//                        Modifier
-//                            .weight(3f),
-//                        style = MaterialTheme.typography.bodyLarge // Use typography
-//                    )
-//                    Row(
-//                        Modifier.weight(1f),
-//                        verticalAlignment = Alignment.CenterVertically
-//                    ) {
-//                        BasicTextField(
-//                            duration,
-//                            { duration = it },
-//                            Modifier.weight(1f),
-//                            textStyle = TextStyle(textAlign = TextAlign.Center),
-//                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-//                            singleLine = true
-//                        ) {
-//                            Column(
-//                                horizontalAlignment = Alignment.CenterHorizontally
-//                            ) {
-//                                it()
-//                                Spacer(
-//                                    Modifier
-//                                        .height(1.dp)
-//                                        .background(MaterialTheme.colorScheme.primary)
-//                                        .fillMaxWidth()
-//                                )
-//                            }
-//                        }
-//                        Text("ч.")
-//                    }
-//                }
 
                 // Type Selection Row/Dropdown
                 Box {
