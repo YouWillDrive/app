@@ -51,11 +51,11 @@ fun NavigationGraph(
         }
 
         composable(
-            route = "${Route.Chat}/{recepientId}",
-            arguments = listOf(navArgument("recepientId") { type = NavType.StringType })
+            route = "${Route.Chat}/{recipientId}",
+            arguments = listOf(navArgument("recipientId") { type = NavType.StringType })
         ) { backStackEntry ->
-            val recepientId = backStackEntry.arguments?.getString("recepientId")
-            ChatScreen(recipientId = recepientId)
+            val recipientId = backStackEntry.arguments?.getString("recipientId")
+            ChatScreen(recipientId = recipientId)
         }
 
         composable<Route.Events> {
