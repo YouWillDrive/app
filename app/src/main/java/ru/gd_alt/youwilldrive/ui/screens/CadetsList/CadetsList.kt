@@ -164,6 +164,7 @@ fun CadetCard(cadet: Cadet, viewModel: CadetListsViewModel, navController: NavCo
     // Function to handle navigation to chat
     val onChatClick = {
         cadetUser?.id?.let { userId ->
+            Log.d("onChatClick", userId)
             navController.navigate("${Route.Chat}/$userId")
         }
     }
