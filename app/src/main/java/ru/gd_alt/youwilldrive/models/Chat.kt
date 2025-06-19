@@ -1,5 +1,6 @@
 package ru.gd_alt.youwilldrive.models
 
+import android.util.Log
 import ru.gd_alt.youwilldrive.data.client.Connection
 import ru.gd_alt.youwilldrive.data.models.RecordID
 
@@ -35,7 +36,7 @@ class Chat(override val id: String) : Identifiable {
 
         suspend fun byParticipants(user1: User, user2: User): Chat? {
             val result = Connection.cl.query(
-                "SELECT * FROM (SELECT *, (SELECT * FROM ->participates->users)[0] as user1, (SELECT * FROM ->participates->users)[1] as user2 FROM chats) WHERE (user1.id = \$user1 OR user2.id = \$user2) OR (user1.id = \$user2 OR user2.id = \$user1)",
+                "SELECT * FROM (SELECT *, (SELECT * FROM ->participates->users)[0] as user1, (SELECT * FROM ->participates->users)[1] as user2 FROM chats) WHERE (user1.id = \$user1 AND user2.id = \$user2) OR (user1.id = \$user2 AND user2.id = \$user1)",
                 mapOf(
                     "user1" to RecordID(user1.id.split(":")[0], user1.id.split(":")[1]),
                     "user2" to RecordID(user2.id.split(":")[0], user2.id.split(":")[1])
@@ -46,6 +47,7 @@ class Chat(override val id: String) : Identifiable {
                 return create(user1, user2)
             }
 
+            Log.d("byParticipants", (((result[0] as Map<*, *>)["result"] as List<*>)[0] as Map<*, *>)["id"].toString())
             return fromId((((result[0] as Map<*, *>)["result"] as List<*>)[0] as Map<*, *>)["id"].toString())
         }
     }
