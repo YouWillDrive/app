@@ -59,7 +59,7 @@ fun NavigationGraph(
         }
 
         composable<Route.Events> {
-            EventsScreen()
+            EventsScreen(navController = navController)
         }
     }
 }

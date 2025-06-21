@@ -46,6 +46,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
@@ -61,12 +63,13 @@ import ru.gd_alt.youwilldrive.models.Placeholders.DefaultEvent
 import ru.gd_alt.youwilldrive.models.Role
 import ru.gd_alt.youwilldrive.models.User
 import ru.gd_alt.youwilldrive.ui.components.EventItem
+import ru.gd_alt.youwilldrive.ui.navigation.Route
 import ru.gd_alt.youwilldrive.ui.screens.Calendar.ConfirmPastEvent
 import ru.gd_alt.youwilldrive.ui.screens.Calendar.EditUpcomingEvent
 
 @Preview
 @Composable
-fun EventsScreen() {
+fun EventsScreen(navController: NavHostController = rememberNavController()) {
     val context = LocalContext.current.applicationContext
     val dataStoreManager = remember { DataStoreManager(context) }
     val factory = remember(dataStoreManager) {
@@ -135,8 +138,16 @@ fun EventsScreen() {
                             if (selectedId != null) {
                                 viewModel.acceptEvent(selectedId)
                             }
+
+                            navController.popBackStack()
+                            navController.navigate(Route.Events)
                         },
-                        onPostpone = viewModel::postpone
+                        onPostpone = { e, v ->
+                            viewModel.postpone(e, v)
+
+                            navController.popBackStack()
+                            navController.navigate(Route.Events)
+                        }
                     )
                 }
                 1 -> {
