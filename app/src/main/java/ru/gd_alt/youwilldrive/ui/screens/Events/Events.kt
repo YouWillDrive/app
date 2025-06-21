@@ -120,7 +120,7 @@ fun EventsScreen() {
                             .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(events.filter { !it.confirmed }) { event ->
+                        items(events.filter { !it.confirmed && !it.declined }) { event ->
                             EventItem(event, myRole ?: Role("x", "Курсант")) {
                                 selectedEvent = it
                             }
@@ -147,7 +147,7 @@ fun EventsScreen() {
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(
-                            events.filter { it.date > Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()) && it.confirmed }
+                            events.filter { it.date > Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()) && it.confirmed}
                         ) { event ->
                             EventItem(event, myRole ?: Role("x", "Cadet")) {
                                 selectedEvent = it

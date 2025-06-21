@@ -22,6 +22,8 @@ class Instructor(override val id: String) : Participant {
     }
 
     suspend fun cadets() : MutableList<Cadet> {
+        val instructorUserId = (me()?.id ?: "a:a").split(':')
+        val instructorUserRecord = RecordID(instructorUserId.first(), instructorUserId.last())
         val actualPlanPoints = (
             Connection.cl.query(
                 "(\n" +
@@ -36,8 +38,11 @@ class Instructor(override val id: String) : Participant {
                 "            ORDER BY date_time DESC\n" +
                 "            LIMIT 1\n" +
                 "        )[0]->assigned_instructor->instructor[0][0]<-is_instructor<-users[0][0].id\n" +
-                "    ) = users:lnqcd1tlfhawtrv5mclb\n" +
-                ").map(|\$v| \$v.id)"
+                "    ) = \$instructor_id\n" +
+                ").map(|\$v| \$v.id)",
+                mapOf(
+                    "instructor_id" to instructorUserRecord
+                )
             ) as List<Map<String, List<RecordID>>>
         )[0]["result"] as List<RecordID>
 

@@ -92,7 +92,7 @@ class EventsViewModel(
             try {
                 val event = Event.fromId(eventId)!!
 
-                event.confirmToHappen(actualUserId, true)
+                event.confirmToHappen(actualUserId, false)
                 Notification.postNotification(
                     "Событие на ${event.date.date} отменено!",
                     "Отменено событие в ${event.date}",

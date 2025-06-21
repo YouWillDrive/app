@@ -31,6 +31,9 @@ class Event(override val id: String, var date: LocalDateTime) : Identifiable {
     val confirmed: Boolean
         get() = runBlocking { actualConfirmationValue("confirmation_types:to_happen") == 1L }
 
+    val declined: Boolean
+        get() = runBlocking { actualConfirmationValue("confirmation_types:to_happen") == 0L }
+
     val durationAsked: Boolean
         get() = runBlocking { actualConfirmationValue("confirmation_types:duration") != -1L }
 

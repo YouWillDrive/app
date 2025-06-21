@@ -110,6 +110,8 @@ fun CadetsListScreen(
     val cadets by viewModel.cadets.collectAsState()
     val listState by viewModel.cadetsListState.collectAsState()
     val cadetAvatars by viewModel.cadetAvatars.collectAsState()
+    Log.d("CadetsListScreen", "$cadets")
+    Log.d("CadetsListScreen", "$cadetAvatars")
     val unreadMessageCounts by viewModel.unreadMessageCounts.collectAsState()
 
     LaunchedEffect(Unit) {
